@@ -1,0 +1,324 @@
+syntax = "proto3";
+
+package querypie;
+
+message GetUserClusterGroupsRequest {
+  string root = 1;
+}
+
+message Item {
+  int32 type = 1;
+  int32 id = 2;
+  string uuid = 3;
+  string name = 4;
+  int32 db_type = 5;
+  bool deactivated = 6;
+}
+
+message EntryWrap {
+  Item item = 1;
+}
+
+message ClusterGroupNode {
+  Item group = 1;
+  repeated EntryWrap entries = 2;
+}
+
+message ClusterGroupsResponse {
+  repeated ClusterGroupNode roots = 1;
+}
+
+message GetUserInstancesRequest {
+  string root = 1;
+  string cluster_uuid = 2;
+}
+
+message Instance {
+  int32 type = 1;
+  int32 id = 2;
+  string uuid = 3;
+  string host = 4;
+  int32 flag5 = 5;
+  int32 port = 6;
+  int32 flag7 = 7;
+}
+
+message InstanceWrap {
+  Instance instance = 1;
+}
+
+message InstancesResponse {
+  repeated InstanceWrap instances = 1;
+}
+
+message GetConnectionForDisplayRequest {
+  int32 mode = 1;
+  string instance_uuid = 2;
+}
+
+message ClusterInfo {
+  int32 id = 2;
+  string uuid = 3;
+  string name = 4;
+}
+
+message InstanceInfo {
+  int32 id = 2;
+  string uuid = 3;
+  string host = 4;
+  int32 port = 6;
+}
+
+message ConnSection {
+  bytes db_account = 1;
+  string host = 3;
+  int32 port = 4;
+  string db_name = 5;
+}
+
+message GetConnectionForDisplayResponse {
+  ClusterInfo cluster = 1;
+  InstanceInfo instance = 2;
+  ConnSection conn = 8;
+  bytes role = 17;
+}
+
+message OpenConnection {
+  int32 flag1 = 1;
+  string instance_uuid = 2;
+  string host = 3;
+  int32 port = 4;
+  int32 flag7 = 7;
+  string db_name = 8;
+  string cluster_name = 9;
+  int32 instance_id = 17;
+  string instance_uuid2 = 18;
+  int32 cluster_id = 19;
+  string cluster_uuid = 20;
+  bytes role = 21;
+  string empty30 = 30;
+  int32 flag43 = 43;
+  bytes db_account = 51;
+  string empty52 = 52;
+  string empty58 = 58;
+}
+
+message OpenRequest {
+  int32 flag1 = 1;
+  string instance_uuid = 2;
+  string db_name = 5;
+  OpenConnection connection = 6;
+  string client_uuid = 12;
+  string instance_uuid2 = 22;
+  int32 flag23 = 23;
+}
+
+message OpenResponse {
+  string conn_token = 1;
+  string session = 2;
+  string engine = 3;
+  string version = 4;
+  string db = 5;
+}
+
+message GetDatabasesRequest {
+  string session = 2;
+  string db = 3;
+}
+
+message GetSchemasRequest {
+  string session = 2;
+  string db = 3;
+}
+
+message NameListResponse {
+  repeated string names = 1;
+}
+
+message GetTablesRequest {
+  string session = 2;
+  string db = 3;
+  string schema = 4;
+  int32 flag = 7;
+}
+
+message GetTableScriptRequest {
+  string session = 2;
+  string db = 3;
+  string table = 4;
+  int32 flag = 5;
+}
+
+message RefreshTokenRequest {}
+
+message ScriptResponse {
+  string script = 1;
+}
+
+message StructureResponse {
+  DictionaryDataTable data_table = 1;
+}
+
+message DictionaryDataTable {
+  repeated string columns = 4;
+  repeated DictionaryDataTableRow rows = 5;
+}
+
+message DictionaryDataTableRow {
+  repeated string values = 1;
+}
+
+message ParseRequest {
+  string session = 2;
+  int32 dialect = 3;
+  string db = 4;
+  string sql = 5;
+  string editor_model_id = 6;
+  ParseOptions options = 7;
+}
+
+message ParseOptions {
+  message Inner {
+    int32 a = 1;
+  }
+  Inner inner = 1;
+  string reserved3 = 3;
+}
+
+message ParseResponse {
+  int32 database_type = 1;
+  string database_name = 2;
+  repeated RpcParsedSql parsed_sql = 3;
+}
+
+message RpcParsedSql {
+  string sql_id = 1;
+  repeated SqlSentence sql = 2;
+  int32 sql_command_type = 3;
+  string sql_command_target = 4;
+  string sql_server = 5;
+  SqlPosition sql_position = 6;
+}
+
+message SqlSentence {
+  string sql = 1;
+  SqlPosition position = 2;
+  repeated SqlParameter parameter = 3;
+  bytes report = 4;
+}
+
+message SqlPosition {
+  int32 line_start = 1;
+  int32 column_start = 2;
+  int32 line_end = 3;
+  int32 column_end = 4;
+}
+
+message SqlParameter {
+  string name = 1;
+  RpcRange span = 2;
+  string display_name = 3;
+  string display_hint = 4;
+  RpcRange display_hint_highlight = 5;
+  StringValue value = 6;
+  SqlParameterMetadata metadata = 7;
+}
+
+message SqlParameterMetadata {
+  int32 type = 7;
+  int32 direction = 8;
+  Int32Value precision = 9;
+  Int32Value scale = 10;
+  Int32Value size = 11;
+}
+
+message RpcRange {
+  Int32Value start = 1;
+  Int32Value end = 2;
+}
+
+message ExecuteRequest {
+  string session = 2;
+  string db = 3;
+  string sql = 4;
+  RpcParsedSql parsed_sql = 5;
+  bool use_limit = 6;
+  int32 row_limit = 7;
+}
+
+message ExecutionPayloadGroup {
+  repeated ExecutionPayload payloads = 1;
+}
+
+message KeepAliveExecutionPayloadGroup {
+  ExecutionPayloadGroup data = 2;
+}
+
+message ExecutionPayload {
+  string sql_id = 1;
+  CommandExecutedState executed = 3;
+  CommandFetchingState fetching = 4;
+  CommandCompleteState complete = 5;
+  int32 sentence_index = 6;
+}
+
+message CommandExecutedState {
+  string sql = 1;
+  int64 execution_time = 2;
+  string db = 3;
+  string object_name = 4;
+  repeated Column columns = 5;
+  bool is_editable = 6;
+}
+
+message CommandFetchingState {
+  int64 row_count = 1;
+  int64 total_rows = 2;
+}
+
+message CommandCompleteState {
+  int64 affected_rows = 1;
+}
+
+message GetDataTableRequest {
+  string session = 2;
+  string db = 3;
+  string handle = 4;
+  int32 row_count = 6;
+}
+
+message GetDataTableResponse {
+  DataTable table = 2;
+}
+
+message DataTable {
+  string handle = 1;
+  int32 row_count = 3;
+  repeated Column columns = 4;
+  repeated bytes rows = 5;
+}
+
+message Column {
+  int32 ordinal = 1;
+  string name = 2;
+  string type = 3;
+}
+
+message StringValue {
+  string value = 1;
+}
+
+message Int32Value {
+  int32 value = 1;
+}
+
+message CommonError {
+  int32 code = 1;
+  StringValue message = 2;
+  StringValue target_site = 3;
+  StringValue source = 4;
+  StringValue help_link = 5;
+  StringValue stack_trace = 6;
+  map<string, string> data = 7;
+  int32 level = 8;
+}
