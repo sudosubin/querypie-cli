@@ -266,7 +266,7 @@ fn webview_data_root() -> std::path::PathBuf {
 }
 
 fn tauri_context() -> tauri::Context<tauri::Wry> {
-    tauri::generate_context!()
+    tauri::tauri_build_context!()
 }
 
 #[cfg(target_os = "macos")]

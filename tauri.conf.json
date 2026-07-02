@@ -5,8 +5,7 @@
   "identifier": "io.github.sudosubin.querypie-cli",
   "build": {
     "beforeDevCommand": "",
-    "beforeBuildCommand": "",
-    "frontendDist": "docs"
+    "beforeBuildCommand": ""
   },
   "app": {},
   "bundle": {
