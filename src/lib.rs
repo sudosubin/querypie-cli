@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod cli;
 
 pub(crate) mod config;
