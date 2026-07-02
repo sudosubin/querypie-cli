@@ -1,0 +1,4 @@
+/querypie
+*.test
+/target
+/gen

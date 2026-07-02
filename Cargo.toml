@@ -1,0 +1,11 @@
+[package]
+name = "querypie"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+
+[[bin]]
+name = "querypie"
+path = "src/main.rs"
