@@ -1,6 +1,8 @@
-use clap::{Args, Subcommand, ValueEnum};
+use anyhow::Result;
+use clap::{Args, Subcommand};
 
 use super::Global;
+use crate::formatting::{self, Options as FormatOptions, OutputFormat};
 
 #[derive(Debug, Subcommand)]
 pub(super) enum Command {
@@ -124,19 +126,13 @@ pub(super) struct OutputArgs {
         default_value_t = OutputFormat::Text,
         help = "Output format"
     )]
-    output: OutputFormat,
+    pub(super) output: OutputFormat,
     #[arg(long, help = "Do not truncate table output")]
-    no_truncate: bool,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum OutputFormat {
-    Text,
-    Json,
+    pub(super) no_truncate: bool,
 }
 
 impl Command {
-    pub(super) fn run(self, global: &Global) {
+    pub(super) fn run(self, global: &Global) -> Result<()> {
         let _ = (
             &global.host,
             &global.connection,
@@ -146,13 +142,75 @@ impl Command {
             global.verbose,
         );
         match self {
-            Command::Connection { .. }
-            | Command::Database { .. }
-            | Command::Schema { .. }
-            | Command::Table { .. }
-            | Command::Query { .. }
-            | Command::Auth { .. }
-            | Command::Session { .. } => {}
+            Command::Connection { command } => command.run(),
+            Command::Database { command } => command.run(),
+            Command::Schema { command } => command.run(),
+            Command::Table { command } => command.run(),
+            Command::Query { output, .. } => formatting::script("", fmt(output)),
+            Command::Auth { .. } | Command::Session { .. } => {
+                let _ = (
+                    crate::formatting::style::success_icon(),
+                    crate::formatting::style::error_icon(),
+                    crate::formatting::style::null_value(),
+                );
+                Ok(())
+            }
         }
     }
+}
+
+impl ConnectionCommand {
+    fn run(self) -> Result<()> {
+        match self {
+            ConnectionCommand::List(output) => {
+                formatting::simple_table(&["NAME"], Vec::<Vec<String>>::new(), fmt(output));
+                Ok(())
+            }
+        }
+    }
+}
+
+impl DatabaseCommand {
+    fn run(self) -> Result<()> {
+        match self {
+            DatabaseCommand::List(output) => formatting::names(&[], fmt(output)),
+        }
+    }
+}
+
+impl SchemaCommand {
+    fn run(self) -> Result<()> {
+        match self {
+            SchemaCommand::List(output) => formatting::names(&[], fmt(output)),
+        }
+    }
+}
+
+impl TableCommand {
+    fn run(self) -> Result<()> {
+        match self {
+            TableCommand::List(output) => formatting::names(&[], fmt(output)),
+            TableCommand::Describe { output, .. } | TableCommand::Ddl { output, .. } => {
+                formatting::script("", fmt(output))
+            }
+        }
+    }
+}
+
+pub(super) fn fmt(output: OutputArgs) -> FormatOptions {
+    FormatOptions {
+        output: output.output,
+        truncate: !output.no_truncate && !no_truncate_env(),
+    }
+}
+
+fn no_truncate_env() -> bool {
+    std::env::var("QUERYPIE_NO_TRUNCATE")
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes"
+            )
+        })
+        .unwrap_or(false)
 }

@@ -83,8 +83,7 @@ pub fn run() -> anyhow::Result<()> {
         schema: cli.schema.unwrap_or_default(),
         verbose: cli.verbose,
     };
-    cli.command.run(&global);
-    Ok(())
+    cli.command.run(&global)
 }
 
 pub fn render_error(err: &dyn std::error::Error) {
