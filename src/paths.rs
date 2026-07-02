@@ -12,6 +12,10 @@ pub(crate) fn host_lock_file(host: &str) -> PathBuf {
     cache_dir().join(format!("{}.lock", host_file_stem(host)))
 }
 
+pub(crate) fn webview_data_root() -> PathBuf {
+    data_dir().join("webview")
+}
+
 pub(crate) fn normalize_host(host: &str) -> String {
     host.trim()
         .trim_start_matches("https://")
@@ -29,6 +33,13 @@ fn config_dir() -> PathBuf {
 pub(crate) fn cache_dir() -> PathBuf {
     env_dir("XDG_CACHE_HOME")
         .unwrap_or_else(|| home_dir().join(".cache"))
+        .join("querypie")
+}
+
+fn data_dir() -> PathBuf {
+    dirs::data_dir()
+        .or_else(dirs::home_dir)
+        .unwrap_or_else(|| PathBuf::from("."))
         .join("querypie")
 }
 

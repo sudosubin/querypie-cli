@@ -5,4 +5,5 @@ fn main() {
     prost_build::Config::new()
         .compile_protos(&["proto/querypie.proto"], &["proto"])
         .expect("compile querypie protobuf schema");
+    tauri_build::build();
 }
