@@ -68,7 +68,7 @@ impl Client {
         })
     }
 
-    pub fn unary<Req, Resp>(&self, method: &str, req: &Req) -> Result<Resp>
+    pub(crate) fn unary<Req, Resp>(&self, method: &str, req: &Req) -> Result<Resp>
     where
         Req: Message,
         Resp: Message + Default,
@@ -77,7 +77,7 @@ impl Client {
         Ok(Resp::decode(data.as_slice())?)
     }
 
-    pub fn send_unary<Req>(&self, method: &str, req: &Req) -> Result<Vec<u8>>
+    pub(crate) fn send_unary<Req>(&self, method: &str, req: &Req) -> Result<Vec<u8>>
     where
         Req: Message,
     {

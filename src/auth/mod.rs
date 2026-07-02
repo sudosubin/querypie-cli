@@ -20,15 +20,15 @@ pub struct AuthSession {
     pub timestamp: String,
 }
 
-pub fn refresh_cookies_in_process(host: &str) -> Result<Option<String>> {
+pub(crate) fn refresh_cookies_in_process(host: &str) -> Result<Option<String>> {
     AuthService::new(host)?.refresh_cookie_in_process()
 }
 
-pub fn read_cookies_in_process(host: &str) -> Result<Option<String>> {
+pub(crate) fn read_cookies_in_process(host: &str) -> Result<Option<String>> {
     AuthService::new(host)?.read_cookie_in_process()
 }
 
-pub fn known_hosts() -> Vec<String> {
+pub(crate) fn known_hosts() -> Vec<String> {
     let mut hosts = BTreeSet::new();
     collect_webview_hosts(&mut hosts);
     collect_cache_hosts(&mut hosts);

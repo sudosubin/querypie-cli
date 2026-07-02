@@ -9,9 +9,6 @@ prost-build = "0.13"
 protoc-bin-vendored = "3"
 tauri-build = { version = "2", features = [] }
 
-[features]
-default = []
-
 [dependencies]
 anyhow = "1"
 anstream = "0.6"
@@ -30,9 +27,13 @@ serde_yaml = "0.9"
 tauri = { version = "2", default-features = false, features = ["wry"] }
 thiserror = "1"
 terminal_size = "0.4"
+time = { version = "0.3", features = ["formatting"] }
 unicode-width = "0.2"
 url = "2"
 uuid = { version = "1", features = ["v4"] }
+
+[features]
+default = []
 
 [[bin]]
 name = "querypie"

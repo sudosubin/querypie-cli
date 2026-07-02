@@ -11,14 +11,15 @@ const LOCK_TIMEOUT: Duration = Duration::from_secs(60);
 const STALE_AFTER: Duration = Duration::from_secs(600);
 const RETRY_INTERVAL: Duration = Duration::from_millis(100);
 
-pub struct HostLock {
+pub(crate) struct HostLock {
     path: PathBuf,
     _file: File,
 }
 
 impl HostLock {
-    pub fn acquire(host: &str) -> Result<Self> {
-        acquire_path(paths::host_lock_file(host))
+    pub(crate) fn acquire(host: &str) -> Result<Self> {
+        let path = paths::host_lock_file(host);
+        acquire_path(path)
     }
 }
 
