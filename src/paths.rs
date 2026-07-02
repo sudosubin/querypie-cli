@@ -4,8 +4,12 @@ pub(crate) fn config_file() -> PathBuf {
     config_dir().join("config.yml")
 }
 
+pub(crate) fn host_cache_file(host: &str) -> PathBuf {
+    cache_dir().join(format!("{}.json", host_file_stem(host)))
+}
+
 pub(crate) fn host_lock_file(host: &str) -> PathBuf {
-    lock_dir().join(format!("{}.lock", host_file_stem(host)))
+    cache_dir().join(format!("{}.lock", host_file_stem(host)))
 }
 
 pub(crate) fn normalize_host(host: &str) -> String {
@@ -22,7 +26,7 @@ fn config_dir() -> PathBuf {
         .join("querypie")
 }
 
-fn lock_dir() -> PathBuf {
+pub(crate) fn cache_dir() -> PathBuf {
     env_dir("XDG_CACHE_HOME")
         .unwrap_or_else(|| home_dir().join(".cache"))
         .join("querypie")
