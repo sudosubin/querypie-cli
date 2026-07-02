@@ -6,6 +6,9 @@ edition = "2021"
 [features]
 default = []
 
+[dependencies]
+clap = { version = "4.5", features = ["derive", "env"] }
+
 [[bin]]
 name = "querypie"
 path = "src/main.rs"
