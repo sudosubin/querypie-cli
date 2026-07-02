@@ -25,6 +25,7 @@ serde_yaml = "0.9"
 thiserror = "1"
 terminal_size = "0.4"
 unicode-width = "0.2"
+uuid = { version = "1", features = ["v4"] }
 
 [[bin]]
 name = "querypie"
