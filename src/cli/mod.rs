@@ -3,6 +3,7 @@ mod commands;
 use clap::Parser;
 
 use self::commands::Command;
+use crate::config;
 
 #[derive(Debug, Parser)]
 #[command(name = "querypie")]
@@ -71,13 +72,14 @@ pub(super) struct Global {
     verbose: bool,
 }
 
-pub fn run() -> Result<(), Box<dyn std::error::Error>> {
+pub fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
+    let cfg = config::load(cli.config.as_deref())?;
     let global = Global {
-        host: cli.host.unwrap_or_default(),
-        connection: cli.connection.unwrap_or_default(),
+        host: pick(cli.host, cfg.host),
+        connection: pick(cli.connection, cfg.connection),
         engine: cli.engine.unwrap_or_default(),
-        database: cli.database.unwrap_or_default(),
+        database: pick(cli.database, cfg.database),
         schema: cli.schema.unwrap_or_default(),
         verbose: cli.verbose,
     };
@@ -87,4 +89,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 
 pub fn render_error(err: &dyn std::error::Error) {
     eprintln!("error: {err}");
+}
+
+fn pick(flag: Option<String>, cfg: String) -> String {
+    flag.filter(|s| !s.trim().is_empty()).unwrap_or(cfg)
 }
