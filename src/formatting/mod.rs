@@ -5,6 +5,10 @@ use anyhow::Result;
 use clap::ValueEnum;
 use serde::Serialize;
 
+use crate::auth::{AuthCheck, AuthState};
+use crate::qpapi::{Connection, ResultSet, TableStructure};
+use crate::sessioncache;
+
 use self::table::print_table;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -30,6 +34,132 @@ pub fn names(names: &[String], opts: Options) -> Result<()> {
     Ok(())
 }
 
+pub fn connections(conns: &[Connection], opts: Options) -> Result<()> {
+    #[derive(Serialize)]
+    struct Row<'a> {
+        name: &'a str,
+        engine: &'a str,
+        access: &'a str,
+        deactivated: bool,
+        cluster_uuid: &'a str,
+        db_type: i32,
+    }
+
+    let rows = conns
+        .iter()
+        .map(|c| Row {
+            name: &c.name,
+            engine: c.engine(),
+            access: connection_access(c),
+            deactivated: c.deactivated,
+            cluster_uuid: &c.cluster_uuid,
+            db_type: c.db_type,
+        })
+        .collect::<Vec<_>>();
+
+    if opts.output == OutputFormat::Json {
+        print_json(&rows)?;
+    } else {
+        print_table(
+            &["NAME", "ENGINE", "ACCESS"],
+            rows.iter().map(|row| {
+                vec![
+                    row.name.to_string(),
+                    row.engine.to_string(),
+                    row.access.to_string(),
+                ]
+            }),
+            opts.truncate,
+        );
+    }
+    Ok(())
+}
+
+pub fn sessions(entries: &[sessioncache::Entry], opts: Options) -> Result<()> {
+    if opts.output == OutputFormat::Json {
+        #[derive(Serialize)]
+        struct Row<'a> {
+            host: &'a str,
+            connection: &'a str,
+            engine: &'a str,
+            db: &'a str,
+            session: &'a str,
+            opened_at: i64,
+        }
+        let rows = entries
+            .iter()
+            .map(|entry| Row {
+                host: &entry.host,
+                connection: &entry.connection,
+                engine: &entry.engine,
+                db: &entry.db,
+                session: &entry.session,
+                opened_at: entry.opened_at,
+            })
+            .collect::<Vec<_>>();
+        print_json(&rows)?;
+    } else {
+        print_table(
+            &["HOST", "CONNECTION", "ENGINE", "DB", "SESSION"],
+            entries.iter().map(|entry| {
+                vec![
+                    entry.host.clone(),
+                    entry.connection.clone(),
+                    entry.engine.clone(),
+                    entry.db.clone(),
+                    entry.session.clone(),
+                ]
+            }),
+            opts.truncate,
+        );
+    }
+    Ok(())
+}
+
+pub fn auth_status(checks: &[AuthCheck]) -> Result<bool> {
+    let mut failed = false;
+    for (index, check) in checks.iter().enumerate() {
+        if index > 0 {
+            println!();
+        }
+        println!("{}", check.host);
+        match check.state {
+            AuthState::Missing => {
+                failed = true;
+                anstream::println!(
+                    "  {} Failed to log in to {}",
+                    style::error_icon(),
+                    check.host
+                );
+                println!("  - No QueryPie webview session was found.");
+                println!(
+                    "  - To authenticate, run: querypie --host {} auth login",
+                    check.host
+                );
+            }
+            AuthState::Valid => {
+                anstream::println!("  {} Logged in to {}", style::success_icon(), check.host);
+                println!("  - Webview session: active");
+                println!("  - Cookie store: QueryPie webview profile");
+            }
+            AuthState::Expired => {
+                failed = true;
+                anstream::println!(
+                    "  {} Failed to log in to {}",
+                    style::error_icon(),
+                    check.host
+                );
+                println!("  - The QueryPie webview session is expired.");
+                println!(
+                    "  - To re-authenticate, run: querypie --host {} auth login",
+                    check.host
+                );
+            }
+        }
+    }
+    Ok(failed)
+}
+
 pub fn script(script: &str, opts: Options) -> Result<()> {
     if opts.output == OutputFormat::Json {
         print_json(&serde_json::json!({ "script": script }))?;
@@ -39,11 +169,78 @@ pub fn script(script: &str, opts: Options) -> Result<()> {
     Ok(())
 }
 
-pub fn simple_table(headers: &[&str], rows: impl IntoIterator<Item = Vec<String>>, opts: Options) {
-    print_table(headers, rows, opts.truncate);
+pub fn table_structure(structure: &TableStructure, opts: Options) -> Result<()> {
+    if opts.output == OutputFormat::Json {
+        print_json(structure)?;
+        return Ok(());
+    }
+
+    print_table(
+        &structure
+            .headers
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+        structure.rows.iter().cloned(),
+        opts.truncate,
+    );
+    Ok(())
+}
+
+pub fn query_result(res: &ResultSet, opts: Options) -> Result<()> {
+    if opts.output == OutputFormat::Json {
+        print_json(&serde_json::json!({ "columns": &res.columns, "rows": query_rows_json(res) }))?;
+        return Ok(());
+    }
+
+    print_table(
+        &res.columns
+            .iter()
+            .map(|c| c.name.as_str())
+            .collect::<Vec<_>>(),
+        res.rows.iter().map(|row| {
+            row.iter()
+                .map(|c| {
+                    if c.is_null {
+                        style::null_value()
+                    } else {
+                        c.value.clone()
+                    }
+                })
+                .collect::<Vec<_>>()
+        }),
+        opts.truncate,
+    );
+    println!("\n({} rows)", res.rows.len());
+    Ok(())
+}
+
+fn connection_access(conn: &Connection) -> &'static str {
+    if conn.deactivated {
+        "expired"
+    } else {
+        "active"
+    }
 }
 
 fn print_json<T: Serialize + ?Sized>(value: &T) -> Result<()> {
     println!("{}", serde_json::to_string_pretty(value)?);
     Ok(())
+}
+
+fn query_rows_json(res: &ResultSet) -> Vec<Vec<serde_json::Value>> {
+    res.rows
+        .iter()
+        .map(|row| {
+            row.iter()
+                .map(|cell| {
+                    if cell.is_null {
+                        serde_json::Value::Null
+                    } else {
+                        serde_json::Value::String(cell.value.clone())
+                    }
+                })
+                .collect()
+        })
+        .collect()
 }

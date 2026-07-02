@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::{Args, Subcommand};
 
-use super::Global;
-use crate::formatting::{self, Options as FormatOptions, OutputFormat};
+use super::{auth_cmd, data_cmd, session_cmd, Global};
+use crate::formatting::{Options as FormatOptions, OutputFormat};
 
 #[derive(Debug, Subcommand)]
 pub(super) enum Command {
@@ -133,66 +133,73 @@ pub(super) struct OutputArgs {
 
 impl Command {
     pub(super) fn run(self, global: &Global) -> Result<()> {
-        let _ = (
-            &global.host,
-            &global.connection,
-            &global.engine,
-            &global.database,
-            &global.schema,
-            global.verbose,
-        );
         match self {
-            Command::Connection { command } => command.run(),
-            Command::Database { command } => command.run(),
-            Command::Schema { command } => command.run(),
-            Command::Table { command } => command.run(),
-            Command::Query { output, .. } => formatting::script("", fmt(output)),
-            Command::Auth { .. } | Command::Session { .. } => {
-                let _ = (
-                    crate::formatting::style::success_icon(),
-                    crate::formatting::style::error_icon(),
-                    crate::formatting::style::null_value(),
-                );
-                Ok(())
+            Command::Connection { command } => command.run(global),
+            Command::Database { command } => command.run(global),
+            Command::Schema { command } => command.run(global),
+            Command::Table { command } => command.run(global),
+            Command::Query { sql, limit, output } => {
+                data_cmd::run_query(global, sql, limit, output)
             }
+            Command::Auth { command } => command.run(global),
+            Command::Session { command } => command.run(global),
         }
     }
 }
 
 impl ConnectionCommand {
-    fn run(self) -> Result<()> {
+    fn run(self, global: &Global) -> Result<()> {
         match self {
-            ConnectionCommand::List(output) => {
-                formatting::simple_table(&["NAME"], Vec::<Vec<String>>::new(), fmt(output));
-                Ok(())
-            }
+            ConnectionCommand::List(output) => data_cmd::list_connections(global, output),
         }
     }
 }
 
 impl DatabaseCommand {
-    fn run(self) -> Result<()> {
+    fn run(self, global: &Global) -> Result<()> {
         match self {
-            DatabaseCommand::List(output) => formatting::names(&[], fmt(output)),
+            DatabaseCommand::List(output) => data_cmd::list_databases(global, output),
         }
     }
 }
 
 impl SchemaCommand {
-    fn run(self) -> Result<()> {
+    fn run(self, global: &Global) -> Result<()> {
         match self {
-            SchemaCommand::List(output) => formatting::names(&[], fmt(output)),
+            SchemaCommand::List(output) => data_cmd::list_schemas(global, output),
         }
     }
 }
 
 impl TableCommand {
-    fn run(self) -> Result<()> {
+    fn run(self, global: &Global) -> Result<()> {
         match self {
-            TableCommand::List(output) => formatting::names(&[], fmt(output)),
-            TableCommand::Describe { output, .. } | TableCommand::Ddl { output, .. } => {
-                formatting::script("", fmt(output))
+            TableCommand::List(output) => data_cmd::list_tables(global, output),
+            TableCommand::Describe { table, output } => {
+                data_cmd::describe_table(global, table, output)
             }
+            TableCommand::Ddl { table, output } => data_cmd::show_table_ddl(global, table, output),
+        }
+    }
+}
+
+impl AuthCommand {
+    fn run(self, global: &Global) -> Result<()> {
+        match self {
+            AuthCommand::Login => auth_cmd::auth_login(global),
+            AuthCommand::Logout => auth_cmd::auth_logout(global),
+            AuthCommand::Status => auth_cmd::auth_status(global),
+            AuthCommand::ReadCookie => auth_cmd::auth_read_cookie(global),
+            AuthCommand::RefreshCookie => auth_cmd::auth_refresh_cookie(global),
+        }
+    }
+}
+
+impl SessionCommand {
+    fn run(self, global: &Global) -> Result<()> {
+        match self {
+            SessionCommand::List(output) => session_cmd::list_cached_sessions(output),
+            SessionCommand::Clear => session_cmd::clear_cached_sessions(global),
         }
     }
 }

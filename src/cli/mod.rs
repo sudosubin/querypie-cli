@@ -1,9 +1,16 @@
+mod auth_cmd;
 mod commands;
+mod data_cmd;
+mod session;
+mod session_cmd;
 
+use anyhow::Result;
 use clap::Parser;
+use std::fmt;
 
 use self::commands::Command;
 use crate::config;
+use crate::qpapi::GrpcError;
 
 #[derive(Debug, Parser)]
 #[command(name = "querypie")]
@@ -72,23 +79,51 @@ pub(super) struct Global {
     verbose: bool,
 }
 
-pub fn run() -> anyhow::Result<()> {
+pub fn run() -> Result<()> {
     let cli = Cli::parse();
-    let cfg = config::load(cli.config.as_deref())?;
-    let global = Global {
-        host: pick(cli.host, cfg.host),
-        connection: pick(cli.connection, cfg.connection),
-        engine: cli.engine.unwrap_or_default(),
-        database: pick(cli.database, cfg.database),
-        schema: cli.schema.unwrap_or_default(),
-        verbose: cli.verbose,
-    };
-    cli.command.run(&global)
+    let (global, command) = cli.into_global_and_command()?;
+    command.run(&global)
 }
 
-pub fn render_error(err: &dyn std::error::Error) {
-    eprintln!("error: {err}");
+impl Cli {
+    fn into_global_and_command(self) -> Result<(Global, Command)> {
+        let cfg = config::load(self.config.as_deref())?;
+        let global = Global {
+            host: pick(self.host, cfg.host),
+            connection: pick(self.connection, cfg.connection),
+            engine: self.engine.unwrap_or_default(),
+            database: pick(self.database, cfg.database),
+            schema: self.schema.unwrap_or_default(),
+            verbose: self.verbose,
+        };
+        Ok((global, self.command))
+    }
 }
+
+pub fn render_error(err: &anyhow::Error) {
+    if err.downcast_ref::<AuthStatusFailed>().is_some() {
+        return;
+    }
+    if let Some(ge) = err.downcast_ref::<GrpcError>() {
+        eprintln!("error: {}", ge.message);
+        if let Some(hint) = ge.hint() {
+            eprintln!("  {hint}");
+        }
+    } else {
+        eprintln!("error: {err}");
+    }
+}
+
+#[derive(Debug)]
+pub(super) struct AuthStatusFailed;
+
+impl fmt::Display for AuthStatusFailed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("auth status failed")
+    }
+}
+
+impl std::error::Error for AuthStatusFailed {}
 
 fn pick(flag: Option<String>, cfg: String) -> String {
     flag.filter(|s| !s.trim().is_empty()).unwrap_or(cfg)
