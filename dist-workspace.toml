@@ -5,12 +5,14 @@ members = ["cargo:."]
 cargo-dist-version = "0.30.3"
 ci = "github"
 installers = []
+publish-jobs = ["./publish-crate"]
 targets = [
   "aarch64-apple-darwin",
   "x86_64-apple-darwin",
   "aarch64-unknown-linux-gnu",
   "x86_64-unknown-linux-gnu",
 ]
+github-custom-job-permissions = { "publish-crate" = { id-token = "write", contents = "read" } }
 
 [dist.github-custom-runners]
 global = "ubuntu-latest"
