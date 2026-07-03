@@ -3,6 +3,7 @@ name = "querypie"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
+repository = "https://github.com/sudosubin/querypie-cli"
 
 [build-dependencies]
 prost-build = "0.13"
@@ -41,3 +42,7 @@ strip = true
 lto = true
 codegen-units = 1
 panic = "abort"
+
+[profile.dist]
+inherits = "release"
+lto = true

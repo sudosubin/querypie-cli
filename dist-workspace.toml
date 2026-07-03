@@ -1,0 +1,31 @@
+[workspace]
+members = ["cargo:."]
+
+[dist]
+cargo-dist-version = "0.30.3"
+ci = "github"
+installers = []
+targets = [
+  "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
+  "aarch64-unknown-linux-gnu",
+  "x86_64-unknown-linux-gnu",
+]
+
+[dist.github-custom-runners]
+global = "ubuntu-latest"
+aarch64-apple-darwin = "macos-latest"
+x86_64-apple-darwin = "macos-15-intel"
+aarch64-unknown-linux-gnu = "ubuntu-latest"
+x86_64-unknown-linux-gnu = "ubuntu-latest"
+
+[dist.dependencies.apt]
+build-essential = { version = "*", targets = ["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"] }
+cmake = { version = "*", targets = ["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"] }
+libayatana-appindicator3-dev = { version = "*", targets = ["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"] }
+libgtk-3-dev = { version = "*", targets = ["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"] }
+librsvg2-dev = { version = "*", targets = ["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"] }
+libssl-dev = { version = "*", targets = ["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"] }
+"libwebkit2gtk-4.1-dev" = { version = "*", targets = ["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"] }
+patchelf = { version = "*", targets = ["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"] }
+pkg-config = { version = "*", targets = ["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"] }
