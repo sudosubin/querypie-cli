@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 pub(crate) fn config_file() -> PathBuf {
-    config_dir().join("config.yml")
+    config_dir().join("config.json")
 }
 
 pub(crate) fn host_cache_file(host: &str) -> PathBuf {

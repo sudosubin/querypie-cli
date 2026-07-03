@@ -27,10 +27,12 @@ cargo run -- --host querypie.example.com -c 'example-main [US]' --engine mysql q
 
 Optional config file:
 
-```yaml
-host: querypie.example.com
-connection: example-main [US]
-database: example_db
+```json
+{
+  "host": "querypie.example.com",
+  "connection": "example-main [US]",
+  "database": "example_db"
+}
 ```
 
-By default the config path is `~/.config/querypie/config.yml`.
+By default the config path is `~/.config/querypie/config.json`.

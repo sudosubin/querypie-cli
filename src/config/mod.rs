@@ -25,7 +25,7 @@ pub fn load(path: Option<&str>) -> Result<Config> {
     }
     let text = std::fs::read_to_string(&path)
         .with_context(|| format!("read config file {}", path.display()))?;
-    let mut cfg: Config = serde_yaml::from_str(&text)
+    let mut cfg: Config = serde_json::from_str(&text)
         .with_context(|| format!("parse config file {}", path.display()))?;
     trim(&mut cfg.host);
     trim(&mut cfg.connection);
