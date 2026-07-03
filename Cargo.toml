@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 build = "build.rs"
 repository = "https://github.com/sudosubin/querypie-cli"
+license = "MIT"
 
 [build-dependencies]
 prost-build = "0.13"
