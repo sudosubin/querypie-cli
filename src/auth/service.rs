@@ -121,11 +121,7 @@ pub fn is_auth_expired(err: &anyhow::Error) -> bool {
 }
 
 fn new_window_id() -> String {
-    use rand::RngCore;
-
-    let mut bytes = [0u8; 16];
-    rand::thread_rng().fill_bytes(&mut bytes);
-    hex::encode(bytes)
+    uuid::Uuid::new_v4().simple().to_string()
 }
 
 fn cookie_from_stdout(stdout: Vec<u8>) -> Result<Option<String>> {

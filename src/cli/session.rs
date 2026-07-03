@@ -1,5 +1,4 @@
 use anyhow::{anyhow, bail, Result};
-use rand::RngCore;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::Global;
@@ -204,9 +203,7 @@ fn is_session_not_found(err: &anyhow::Error) -> bool {
 }
 
 fn new_window_id() -> String {
-    let mut bytes = [0u8; 16];
-    rand::thread_rng().fill_bytes(&mut bytes);
-    hex::encode(bytes)
+    uuid::Uuid::new_v4().simple().to_string()
 }
 
 fn now_unix() -> i64 {
