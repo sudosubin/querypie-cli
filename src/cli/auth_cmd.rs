@@ -1,12 +1,13 @@
 use anyhow::{anyhow, bail, Result};
 
-use super::{AuthStatusFailed, Global};
+use super::{AuthLoginFailed, AuthStatusFailed, Global};
 use crate::auth::{self, AuthService};
 use crate::formatting::{self, style};
 use crate::sessioncache;
 
 pub(super) fn auth_login(global: &Global) -> Result<()> {
-    let session = AuthService::new(global.require_host()?)?.login()?;
+    let auth = AuthService::new(global.require_host()?)?;
+    let session = auth.login().map_err(AuthLoginFailed::from)?;
     anstream::println!("{} Logged in to {}", style::success_icon(), session.host);
     Ok(())
 }

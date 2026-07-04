@@ -10,6 +10,7 @@ use std::fmt;
 
 use self::commands::Command;
 use crate::config;
+use crate::formatting::style;
 use crate::qpapi::GrpcError;
 
 #[derive(Debug, Parser)]
@@ -101,6 +102,10 @@ impl Cli {
 }
 
 pub fn render_error(err: &anyhow::Error) {
+    if let Some(err) = err.downcast_ref::<AuthLoginFailed>() {
+        anstream::eprintln!("{} {}", style::error_icon(), err.message());
+        return;
+    }
     if err.downcast_ref::<AuthStatusFailed>().is_some() {
         return;
     }
@@ -115,6 +120,33 @@ pub fn render_error(err: &anyhow::Error) {
 }
 
 #[derive(Debug)]
+pub(super) struct AuthLoginFailed {
+    message: String,
+}
+
+impl AuthLoginFailed {
+    fn message(&self) -> &str {
+        &self.message
+    }
+}
+
+impl From<anyhow::Error> for AuthLoginFailed {
+    fn from(err: anyhow::Error) -> Self {
+        Self {
+            message: capitalize_first(&err.to_string()),
+        }
+    }
+}
+
+impl fmt::Display for AuthLoginFailed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for AuthLoginFailed {}
+
+#[derive(Debug)]
 pub(super) struct AuthStatusFailed;
 
 impl fmt::Display for AuthStatusFailed {
@@ -127,4 +159,12 @@ impl std::error::Error for AuthStatusFailed {}
 
 fn pick(flag: Option<String>, cfg: String) -> String {
     flag.filter(|s| !s.trim().is_empty()).unwrap_or(cfg)
+}
+
+fn capitalize_first(text: &str) -> String {
+    let mut chars = text.chars();
+    match chars.next() {
+        Some(first) => first.to_uppercase().chain(chars).collect(),
+        None => "Login failed".to_string(),
+    }
 }
