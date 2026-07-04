@@ -7,7 +7,7 @@ use crate::sessioncache;
 
 pub(super) fn auth_login(global: &Global) -> Result<()> {
     let session = AuthService::new(global.require_host()?)?.login()?;
-    println!("logged in to {}", session.host);
+    anstream::println!("{} Logged in to {}", style::success_icon(), session.host);
     Ok(())
 }
 
