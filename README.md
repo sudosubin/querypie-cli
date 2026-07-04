@@ -7,7 +7,7 @@
 [![crates.io](https://badgen.net/crates/v/querypie)](https://crates.io/crates/querypie)
 [![built with rust](https://badgen.net/badge/built%20with/Rust/orange)](https://www.rust-lang.org)
 
-Query QueryPie databases from the terminal with Tauri WebView authentication.
+Query QueryPie databases from the terminal with webview authentication.
 
 <video src="./docs/assets/querypie-cli-demo.webm" controls muted playsinline width="100%"></video>
 

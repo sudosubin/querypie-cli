@@ -2,6 +2,7 @@
 name = "querypie"
 version = "0.1.0"
 edition = "2021"
+description = "Query QueryPie databases from the terminal with webview authentication."
 build = "build.rs"
 repository = "https://github.com/sudosubin/querypie-cli"
 license = "MIT"
