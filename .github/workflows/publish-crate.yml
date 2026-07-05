@@ -9,7 +9,7 @@ on:
 
 jobs:
   publish-crate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       id-token: write
       contents: read
@@ -23,6 +23,22 @@ jobs:
       - id: auth
         uses: rust-lang/crates-io-auth-action@v1
 
-      - run: cargo publish --locked --no-verify
+      - name: Publish crate
+        run: |
+          set +e
+          output=$(cargo publish --locked --no-verify 2>&1)
+          status=$?
+          printf '%s\n' "$output"
+          set -e
+
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+
+          if printf '%s\n' "$output" | grep -Eiq 'already uploaded|already exists|previously uploaded|crate version.*already'; then
+            exit 0
+          fi
+
+          exit "$status"
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
