@@ -9,6 +9,7 @@ use clap::Parser;
 use std::fmt;
 
 use self::commands::Command;
+use crate::auth;
 use crate::config;
 use crate::formatting::style;
 use crate::qpapi::GrpcError;
@@ -104,6 +105,10 @@ impl Cli {
 pub fn render_error(err: &anyhow::Error) {
     if let Some(err) = err.downcast_ref::<AuthLoginFailed>() {
         anstream::eprintln!("{} {}", style::error_icon(), err.message());
+        return;
+    }
+    if auth::is_login_canceled(err) {
+        anstream::eprintln!("{} {}", style::error_icon(), err);
         return;
     }
     if err.downcast_ref::<AuthStatusFailed>().is_some() {

@@ -68,15 +68,9 @@ impl Global {
         if self.verbose {
             eprintln!("auth expired; refreshing token");
         }
+        let cookie = AuthService::new(self.require_host()?)?.refresh_or_login_cookie()?;
         let _ = sessioncache::clear(&self.host, &self.connection);
-        AuthService::new(self.require_host()?)?
-            .refresh_cookie_via_child()?
-            .ok_or_else(|| {
-                anyhow!(
-                    "QueryPie session expired and refresh failed; run `querypie --host {} auth login`",
-                    self.host
-                )
-            })
+        Ok(cookie)
     }
 
     fn require_connection(&self) -> Result<()> {
@@ -92,9 +86,9 @@ impl Global {
     fn cookie(&self, force_login: bool) -> Result<String> {
         let auth = AuthService::new(self.require_host()?)?;
         if force_login {
-            Ok(auth.login()?.cookies)
+            auth.login().map(|session| session.cookies)
         } else {
-            auth.read_cookie_or_error()
+            auth.read_or_login_cookie()
         }
     }
 

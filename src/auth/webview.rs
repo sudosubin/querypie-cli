@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 mod cookies;
 
-use super::{now_unix, AuthSession, AUTH_COOKIE};
+use super::{AuthError, AuthSession, AUTH_COOKIE};
 use crate::paths;
 use crate::qpapi;
 use crate::qpapi::Client;
@@ -95,7 +95,7 @@ pub fn login(host: &str) -> Result<AuthSession> {
         .lock()
         .ok()
         .and_then(|slot| slot.clone())
-        .ok_or_else(|| anyhow!("login canceled before a QueryPie session was established"))
+        .ok_or(AuthError::LoginCanceled.into())
 }
 
 pub fn read_cookies(host: &str) -> Result<Option<String>> {
@@ -148,6 +148,21 @@ pub fn clear_profile(host: &str) -> Result<()> {
         std::fs::remove_dir_all(dir)?;
     }
     Ok(())
+}
+
+pub fn has_profile(host: &str) -> bool {
+    let host = paths::normalize_host(host);
+    !host.is_empty() && webview_data_dir(&host).exists()
+}
+
+pub fn hosts() -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(webview_data_root()) else {
+        return Vec::new();
+    };
+    entries
+        .flatten()
+        .filter_map(|entry| host_from_profile_entry(&entry).ok().flatten())
+        .collect()
 }
 
 fn with_cookie_window<T, F>(host: &str, f: F) -> Result<T>
@@ -243,11 +258,7 @@ fn read_session_from_window<R: tauri::Runtime>(
     if !is_authenticated(&host, &cookies) {
         return Ok(None);
     }
-    Ok(Some(AuthSession {
-        host,
-        cookies,
-        timestamp: now_unix().to_string(),
-    }))
+    Ok(Some(AuthSession { host, cookies }))
 }
 
 fn is_authenticated(host: &str, cookies: &str) -> bool {
@@ -263,6 +274,18 @@ fn webview_data_dir(host: &str) -> std::path::PathBuf {
 
 fn webview_data_root() -> std::path::PathBuf {
     paths::webview_data_root()
+}
+
+fn host_from_profile_entry(entry: &std::fs::DirEntry) -> Result<Option<String>> {
+    if !entry.file_type()?.is_dir() {
+        return Ok(None);
+    }
+    let host = entry
+        .file_name()
+        .to_str()
+        .map(paths::normalize_host)
+        .unwrap_or_default();
+    Ok((!host.is_empty()).then_some(host))
 }
 
 fn tauri_context() -> tauri::Context<tauri::Wry> {

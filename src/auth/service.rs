@@ -1,9 +1,10 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 
 use super::{webview, AuthSession};
 use crate::lockfile::HostLock;
 use crate::paths;
 use crate::qpapi::{Client, GrpcError};
+use crate::sessioncache;
 
 use super::status::AuthCheck;
 
@@ -23,6 +24,10 @@ impl AuthService {
 
     pub fn login(&self) -> Result<AuthSession> {
         let _lock = HostLock::acquire(&self.host)?;
+        self.login_with_lock_held()
+    }
+
+    fn login_with_lock_held(&self) -> Result<AuthSession> {
         webview::clear_profile(&self.host)?;
         webview::login(&self.host)
     }
@@ -46,14 +51,17 @@ impl AuthService {
         webview::read_cookies(&self.host)
     }
 
-    pub fn read_cookie_or_error(&self) -> Result<String> {
-        self.read_cookie_via_child()?.ok_or_else(|| {
-            anyhow!(
+    pub fn read_or_login_cookie(&self) -> Result<String> {
+        if let Some(cookies) = self.read_cookie_via_child()? {
+            return Ok(cookies);
+        }
+        self.login_if_previously_authenticated(|| {
+            format!(
                 "not logged in to {}; run `querypie --host {} auth login` first",
-                self.host,
-                self.host
+                self.host, self.host
             )
         })
+        .map(|session| session.cookies)
     }
 
     pub fn check(&self) -> Result<AuthCheck> {
@@ -87,6 +95,19 @@ impl AuthService {
         Ok(None)
     }
 
+    pub fn refresh_or_login_cookie(&self) -> Result<String> {
+        if let Some(cookies) = self.refresh_cookie_via_child()? {
+            return Ok(cookies);
+        }
+        self.login_if_previously_authenticated(|| {
+            format!(
+                "QueryPie session expired and refresh failed; run `querypie --host {} auth login`",
+                self.host
+            )
+        })
+        .map(|session| session.cookies)
+    }
+
     pub(crate) fn refresh_cookie_in_process(&self) -> Result<Option<String>> {
         let _lock = HostLock::acquire(&self.host)?;
         let host = self.host.clone();
@@ -110,6 +131,35 @@ impl AuthService {
             Ok(()) => Ok(Some(AuthCheck::valid(self.host.clone()))),
             Err(err) if is_auth_expired(&err) => Ok(None),
             Err(err) => Err(err),
+        }
+    }
+
+    fn login_if_previously_authenticated<F>(&self, message: F) -> Result<AuthSession>
+    where
+        F: FnOnce() -> String,
+    {
+        if !self.has_login_history() {
+            bail!("{}", message());
+        }
+
+        let _lock = HostLock::acquire(&self.host)?;
+        if let Some(cookies) = self.read_cookie_via_child()? {
+            if self.check_cookies(&cookies)?.is_some() {
+                return Ok(self.session_from_cookies(cookies));
+            }
+        }
+
+        self.login_with_lock_held()
+    }
+
+    fn has_login_history(&self) -> bool {
+        webview::has_profile(&self.host) || sessioncache::has_host(&self.host)
+    }
+
+    fn session_from_cookies(&self, cookies: String) -> AuthSession {
+        AuthSession {
+            host: self.host.clone(),
+            cookies,
         }
     }
 }

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::lockfile::HostLock;
 use crate::paths;
@@ -65,20 +65,26 @@ pub fn put(entry: Entry) -> Result<()> {
 
 pub fn list() -> Vec<Entry> {
     let mut entries = Vec::new();
-    let Ok(files) = std::fs::read_dir(cache_root()) else {
-        return entries;
-    };
-    for file in files.flatten() {
-        let path = file.path();
-        if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
-            continue;
-        }
-        let Some(host) = path.file_stem().and_then(|stem| stem.to_str()) else {
-            continue;
-        };
-        entries.extend(list_host(host));
+    for host in hosts() {
+        entries.extend(list_host(&host));
     }
     entries
+}
+
+pub fn hosts() -> Vec<String> {
+    let Ok(files) = std::fs::read_dir(cache_root()) else {
+        return Vec::new();
+    };
+    files
+        .flatten()
+        .filter_map(|file| host_from_cache_path(&file.path()))
+        .filter(|host| has_host(host))
+        .collect()
+}
+
+pub fn has_host(host: &str) -> bool {
+    let host = paths::normalize_host(host);
+    !host.is_empty() && !load_host(&host).sessions.is_empty()
 }
 
 pub fn clear(host: &str, conn: &str) -> Result<()> {
@@ -123,13 +129,25 @@ fn clear_all_hosts() -> Result<()> {
 
 fn clear_host(host: &str, conn: &str) -> Result<()> {
     let _lock = HostLock::acquire(host)?;
-    let mut file = load_host(host);
     if conn.trim().is_empty() {
-        file.sessions.clear();
-    } else {
-        file.sessions.remove(conn);
+        let path = path_for_host(host);
+        if path.exists() {
+            std::fs::remove_file(path)?;
+        }
+        return Ok(());
     }
-    save_host(host, &file)
+
+    let mut file = load_host(host);
+    file.sessions.remove(conn);
+    if file.sessions.is_empty() {
+        let path = path_for_host(host);
+        if path.exists() {
+            std::fs::remove_file(path)?;
+        }
+        Ok(())
+    } else {
+        save_host(host, &file)
+    }
 }
 
 fn load_host(host: &str) -> HostCacheFile {
@@ -152,6 +170,14 @@ fn save_host(host: &str, file: &HostCacheFile) -> Result<()> {
 
 fn cache_root() -> PathBuf {
     paths::cache_dir()
+}
+
+fn host_from_cache_path(path: &Path) -> Option<String> {
+    if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
+        return None;
+    }
+    let host = paths::normalize_host(path.file_stem()?.to_str()?);
+    (!host.is_empty() && host != "sessions").then_some(host)
 }
 
 impl From<Entry> for SessionEntry {

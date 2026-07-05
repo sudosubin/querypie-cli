@@ -76,8 +76,8 @@ querypie --host querypie.example.com connection list --output json
 - Login uses a dedicated Tauri WebView.
 - httpOnly QueryPie cookies stay in the WebView cookie store.
 - Access token refresh runs automatically in the background.
-- If refresh fails or no login exists, commands exit with an auth error.
-- Commands do not open a login window automatically.
+- If refresh fails for a previously authenticated host, commands open the login WebView and continue after login.
+- If no login exists, commands exit with an auth error.
 
 ## Configuration
 
