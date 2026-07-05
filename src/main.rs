@@ -1,8 +1,8 @@
 fn main() {
-    std::process::exit(match querypie::cli::run() {
+    std::process::exit(match querypie_cli::cli::run() {
         Ok(()) => 0,
         Err(err) => {
-            querypie::cli::render_error(&err);
+            querypie_cli::cli::render_error(&err);
             1
         }
     });

@@ -4,7 +4,7 @@
 
 [![license](https://badgen.net/github/license/sudosubin/querypie-cli)](LICENSE)
 [![release](https://badgen.net/github/release/sudosubin/querypie-cli)](https://github.com/sudosubin/querypie-cli/releases)
-[![crates.io](https://badgen.net/crates/v/querypie)](https://crates.io/crates/querypie)
+[![crates.io](https://badgen.net/crates/v/querypie-cli)](https://crates.io/crates/querypie-cli)
 [![built with rust](https://badgen.net/badge/built%20with/Rust/orange)](https://www.rust-lang.org)
 
 Query QueryPie databases from the terminal with webview authentication.
@@ -24,7 +24,7 @@ querypie --host querypie.example.com -c '<connection>' --engine mysql query 'sel
 ## Installation
 
 ```sh
-cargo install querypie
+cargo install querypie-cli
 ```
 
 Or download a binary from [GitHub Releases](https://github.com/sudosubin/querypie-cli/releases).

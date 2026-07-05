@@ -1,5 +1,5 @@
 [package]
-name = "querypie"
+name = "querypie-cli"
 version = "0.1.0"
 edition = "2021"
 description = "Query QueryPie databases from the terminal with webview authentication."
