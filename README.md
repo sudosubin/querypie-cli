@@ -2,14 +2,15 @@
 
 # querypie-cli
 
-[![license](https://badgen.net/github/license/sudosubin/querypie-cli)](LICENSE)
-[![release](https://badgen.net/github/release/sudosubin/querypie-cli)](https://github.com/sudosubin/querypie-cli/releases)
-[![crates.io](https://badgen.net/crates/v/querypie-cli)](https://crates.io/crates/querypie-cli)
-[![built with rust](https://badgen.net/badge/built%20with/Rust/orange)](https://www.rust-lang.org)
+[![version](https://badgen.net/github/release/sudosubin/querypie-cli?label=version)](https://github.com/sudosubin/querypie-cli/releases)
+[![QueryPie](https://badgen.net/badge/QueryPie/11.5.4/blue?icon=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0xMCAtMTAgODggODgiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik00OC4wOCA1LjgzYTE5LjkgMTkuOSAwIDAgMC0yOC4xNiAwTDUuODMgMTkuOTJhMTkuOSAxOS45IDAgMCAwIDAgMjguMTZsMTQuMDkgMTQuMDlhMTkuOSAxOS45IDAgMCAwIDI4LjE2IDBsMy4wOC0zLjA4LTcuMDEtNy4wMS0xLjcgMS43YTExLjk1IDExLjk1IDAgMCAxLTE2LjkgMEwxNC4yOCA0Mi41YTExLjk1IDExLjk1IDAgMCAxIDAtMTYuOWwxMS4yNy0xMS4yN2ExMS45NSAxMS45NSAwIDAgMSAxNi45IDBMNTMuNzIgMjUuNmExMS45NSAxMS45NSAwIDAgMSAwIDE2LjlsLS44NC44NCA3IDcuMDEgMi4yOS0yLjI4YTE5LjkgMTkuOSAwIDAgMCAwLTI4LjE2em0tOS45NCAxOC4yM2E2IDYgMCAwIDAtOC40NSAwbC01LjYzIDUuNjNhNiA2IDAgMCAwIDAgOC40NWw1LjYzIDUuNjNhNiA2IDAgMCAwIDguNDUgMGw1LjYzLTUuNjNhNiA2IDAgMCAwIDAtOC40NXoiLz48L3N2Zz4=)](https://docs.querypie.com)
+[![license](https://badgen.net/github/license/sudosubin/querypie-cli?color=green)](LICENSE)
 
 Query QueryPie databases from the terminal with webview authentication.
 
-<video src="./docs/assets/querypie-cli-demo.webm" controls muted playsinline width="100%"></video>
+<a href="./docs/assets/querypie-cli-demo.avif">
+  <img src="./docs/assets/querypie-cli-demo.avif" alt="querypie-cli demo" width="1200" />
+</a>
 
 </div>
 
@@ -140,4 +141,4 @@ cargo build --all-features
 
 ## License
 
-[MIT](LICENSE)
+MIT, see [LICENSE](./LICENSE).
