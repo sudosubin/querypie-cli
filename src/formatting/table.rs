@@ -67,7 +67,8 @@ fn fit_widths_to_terminal(widths: &mut [usize]) {
 }
 
 fn terminal_width() -> Option<usize> {
-    terminal_size::terminal_size().map(|(terminal_size::Width(width), _)| width as usize)
+    terminal_size::terminal_size_of(std::io::stdout())
+        .map(|(terminal_size::Width(width), _)| width as usize)
 }
 
 fn truncate_to_width(value: &str, width: usize) -> String {
