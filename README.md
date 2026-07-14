@@ -45,6 +45,7 @@ Linux builds require the WebKitGTK and Tauri system packages used by the CI work
 | `auth login` | Open the QueryPie WebView login |
 | `auth logout` | Clear the WebView profile for a host |
 | `auth status` | Show login status |
+| `completion <shell>` | Generate shell completions |
 | `connection list` | List available QueryPie connections |
 | `database list` | List databases for a connection |
 | `query <sql>` | Run SQL through QueryPie |
@@ -98,6 +99,22 @@ Example:
 ```
 
 CLI flags override config values.
+
+## Shell Completions
+
+Generate completions for your shell:
+
+```sh
+querypie completion bash > querypie.bash
+querypie completion elvish > querypie.elv
+querypie completion fish > ~/.config/fish/completions/querypie.fish
+querypie completion powershell > _querypie.ps1
+querypie completion zsh > "${fpath[1]}/_querypie"
+```
+
+Completions can query your logged-in QueryPie host for connection, engine, database,
+schema, and table candidates. If authentication or network access is unavailable,
+dynamic candidates are skipped silently.
 
 ## Output
 

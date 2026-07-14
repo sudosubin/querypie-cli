@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::{Args, Subcommand};
+use clap_complete::Shell;
 
 use super::{auth_cmd, data_cmd, session_cmd, Global};
 use crate::formatting::{Options as FormatOptions, OutputFormat};
@@ -10,6 +11,11 @@ pub(super) enum Command {
     Auth {
         #[command(subcommand)]
         command: AuthCommand,
+    },
+    #[command(about = "Generate shell completions")]
+    Completion {
+        #[arg(value_enum)]
+        shell: Shell,
     },
     #[command(about = "List and inspect QueryPie connections")]
     #[command(after_help = "EXAMPLES:\n  querypie connection list")]
@@ -116,6 +122,7 @@ pub(super) enum TableCommand {
         selection: TableSelectionArgs,
         #[command(flatten)]
         output: OutputArgs,
+        #[arg(add = clap_complete::ArgValueCompleter::new(super::completion::complete_tables))]
         table: String,
     },
     #[command(about = "Show QueryPie table structure")]
@@ -124,6 +131,7 @@ pub(super) enum TableCommand {
         selection: TableSelectionArgs,
         #[command(flatten)]
         output: OutputArgs,
+        #[arg(add = clap_complete::ArgValueCompleter::new(super::completion::complete_tables))]
         table: String,
     },
     #[command(about = "List tables for the selected schema")]
@@ -155,7 +163,8 @@ pub(super) struct ConnectionArg {
         short = 'c',
         long,
         value_name = "CONNECTION",
-        help = "QueryPie connection name"
+        help = "QueryPie connection name",
+        add = clap_complete::ArgValueCompleter::new(super::completion::complete_connections)
     )]
     connection: Option<String>,
 }
@@ -167,7 +176,8 @@ pub(super) struct ConnectionSelectionArgs {
     #[arg(
         long,
         value_name = "ENGINE",
-        help = "Database engine name, such as mysql"
+        help = "Database engine name, such as mysql",
+        add = clap_complete::ArgValueCompleter::new(super::completion::complete_engines)
     )]
     engine: Option<String>,
 }
@@ -180,7 +190,8 @@ pub(super) struct DatabaseSelectionArgs {
         short = 'd',
         long = "db",
         value_name = "DATABASE",
-        help = "Database name to use"
+        help = "Database name to use",
+        add = clap_complete::ArgValueCompleter::new(super::completion::complete_databases)
     )]
     database: Option<String>,
 }
@@ -189,7 +200,12 @@ pub(super) struct DatabaseSelectionArgs {
 pub(super) struct TableSelectionArgs {
     #[command(flatten)]
     database: DatabaseSelectionArgs,
-    #[arg(long, value_name = "SCHEMA", help = "Schema name to use")]
+    #[arg(
+        long,
+        value_name = "SCHEMA",
+        help = "Schema name to use",
+        add = clap_complete::ArgValueCompleter::new(super::completion::complete_schemas)
+    )]
     schema: Option<String>,
 }
 
@@ -197,6 +213,7 @@ impl Command {
     pub(super) fn run(self, global: &Global) -> Result<()> {
         match self {
             Command::Auth { command } => command.run(global),
+            Command::Completion { .. } => Ok(()),
             Command::Connection { command } => command.run(global),
             Command::Database { command } => command.run(global),
             Command::Query {
@@ -210,7 +227,7 @@ impl Command {
 
     pub(super) fn apply_selection(&self, global: &mut Global) {
         match self {
-            Command::Auth { .. } | Command::Connection { .. } => {}
+            Command::Auth { .. } | Command::Completion { .. } | Command::Connection { .. } => {}
             Command::Database { command } => command.apply_selection(global),
             Command::Query { selection, .. } => selection.apply_to(global),
             Command::Schema { command } => command.apply_selection(global),

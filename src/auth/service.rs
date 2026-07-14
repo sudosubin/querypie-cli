@@ -36,7 +36,7 @@ impl AuthService {
         webview::clear_profile(&self.host)
     }
 
-    fn read_cookie_via_child(&self) -> Result<Option<String>> {
+    pub(crate) fn read_cookie_via_child(&self) -> Result<Option<String>> {
         let output = std::process::Command::new(std::env::current_exe()?)
             .arg("--host")
             .arg(&self.host)
