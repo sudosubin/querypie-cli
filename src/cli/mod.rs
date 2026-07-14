@@ -21,6 +21,24 @@ use crate::qpapi::GrpcError;
 
 const COMPLETE_ENV: &str = "QUERYPIE_COMPLETE";
 
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+enum ColorChoice {
+    Auto,
+    Always,
+    Never,
+}
+
+impl ColorChoice {
+    fn install(self) {
+        let choice = match self {
+            Self::Auto => anstream::ColorChoice::Auto,
+            Self::Always => anstream::ColorChoice::Always,
+            Self::Never => anstream::ColorChoice::Never,
+        };
+        choice.write_global();
+    }
+}
+
 #[derive(Debug, Parser)]
 #[command(name = "querypie")]
 #[command(about = "Query QueryPie databases from the terminal")]
@@ -35,20 +53,38 @@ struct Cli {
     #[arg(
         long,
         global = true,
-        value_name = "HOST",
-        help = "QueryPie host",
-        add = clap_complete::ArgValueCompleter::new(completion::complete_hosts)
+        value_enum,
+        default_value_t = ColorChoice::Auto,
+        value_name = "WHEN",
+        help = "When to use color: auto, always, never",
+        display_order = 0
     )]
-    host: Option<String>,
-    #[arg(short, long, global = true, help = "Print verbose diagnostics")]
-    verbose: bool,
+    color: ColorChoice,
     #[arg(
         long,
         global = true,
         value_name = "PATH",
-        help = "Path to a QueryPie CLI config file"
+        help = "Path to a QueryPie CLI config file",
+        display_order = 1
     )]
     config: Option<String>,
+    #[arg(
+        long,
+        global = true,
+        value_name = "HOST",
+        help = "QueryPie host",
+        add = clap_complete::ArgValueCompleter::new(completion::complete_hosts),
+        display_order = 5
+    )]
+    host: Option<String>,
+    #[arg(
+        short,
+        long,
+        global = true,
+        help = "Print verbose diagnostics",
+        display_order = 10
+    )]
+    verbose: bool,
     #[command(subcommand)]
     command: Command,
 }
@@ -67,7 +103,9 @@ pub fn run() -> Result<()> {
     if complete_from_env()? {
         return Ok(());
     }
+
     let cli = Cli::parse();
+    cli.color.install();
     if let Command::Completion { shell } = &cli.command {
         return print_completion(*shell);
     }
@@ -259,14 +297,21 @@ mod tests {
     }
 
     #[test]
+    fn options_are_alphabetical() {
+        let mut command = Cli::command();
+        command.build();
+        assert_options_are_alphabetical(&command);
+    }
+
+    #[test]
     fn top_level_help_only_shows_global_options() {
         let help = help_for(["querypie", "--help"]);
 
-        assert!(help.contains("--host <HOST>"));
         assert!(help.contains("--config <PATH>"));
         assert!(!help.contains("--connection <CONNECTION>"));
-        assert!(!help.contains("--engine <ENGINE>"));
         assert!(!help.contains("--db <DATABASE>"));
+        assert!(!help.contains("--engine <ENGINE>"));
+        assert!(help.contains("--host <HOST>"));
         assert!(!help.contains("--schema <SCHEMA>"));
     }
 
@@ -274,26 +319,26 @@ mod tests {
     fn scoped_help_shows_selection_options_on_relevant_commands() {
         let auth = help_for(["querypie", "auth", "--help"]);
         assert!(!auth.contains("--connection"));
-        assert!(!auth.contains("--engine"));
         assert!(!auth.contains("--db"));
+        assert!(!auth.contains("--engine"));
         assert!(!auth.contains("--schema"));
 
         let database = help_for(["querypie", "database", "list", "--help"]);
         assert!(database.contains("--connection <CONNECTION>"));
-        assert!(database.contains("--engine <ENGINE>"));
         assert!(!database.contains("--db"));
+        assert!(database.contains("--engine <ENGINE>"));
         assert!(!database.contains("--schema"));
 
         let table = help_for(["querypie", "table", "list", "--help"]);
         assert!(table.contains("--connection <CONNECTION>"));
-        assert!(table.contains("--engine <ENGINE>"));
         assert!(table.contains("--db <DATABASE>"));
+        assert!(table.contains("--engine <ENGINE>"));
         assert!(table.contains("--schema <SCHEMA>"));
 
         let clear = help_for(["querypie", "session", "clear", "--help"]);
         assert!(clear.contains("--connection <CONNECTION>"));
-        assert!(!clear.contains("--engine"));
         assert!(!clear.contains("--db"));
+        assert!(!clear.contains("--engine"));
         assert!(!clear.contains("--schema"));
     }
 
@@ -314,6 +359,31 @@ mod tests {
 
         for subcommand in command.get_subcommands() {
             assert_subcommands_are_alphabetical(subcommand);
+        }
+    }
+
+    fn assert_options_are_alphabetical(command: &clap::Command) {
+        let mut options = command
+            .get_arguments()
+            .filter_map(|argument| {
+                argument
+                    .get_long()
+                    .filter(|long| *long != "help")
+                    .map(|long| (argument.get_display_order(), long))
+            })
+            .collect::<Vec<_>>();
+        options.sort_by_key(|(display_order, _)| *display_order);
+
+        let actual = options
+            .into_iter()
+            .map(|(_, long)| long)
+            .collect::<Vec<_>>();
+        let mut expected = actual.clone();
+        expected.sort_unstable();
+        assert_eq!(actual, expected, "{} options", command.get_name());
+
+        for subcommand in command.get_subcommands() {
+            assert_options_are_alphabetical(subcommand);
         }
     }
 }
