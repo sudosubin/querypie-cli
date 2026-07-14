@@ -114,7 +114,7 @@ impl Global {
     }
 
     fn cached_session(&self, host: &str, cookie: &str) -> Result<Option<Resolved>> {
-        let Some(entry) = sessioncache::get(host, &self.connection, &self.engine) else {
+        let Some(entry) = sessioncache::get_matching(host, &self.connection, &self.engine) else {
             return Ok(None);
         };
         if self.verbose {
@@ -123,11 +123,12 @@ impl Global {
                 entry.session, entry.window_id
             );
         }
+        let db_type = cached_db_type(&entry);
         Ok(Some(Resolved {
             client: Client::new(host, cookie.to_string(), entry.window_id)?,
             session: entry.session,
             db: self.selected_db(entry.db),
-            db_type: db_type_for_engine(&self.engine),
+            db_type,
         }))
     }
 
@@ -143,11 +144,12 @@ impl Global {
         }
         sessioncache::put(sessioncache::Entry {
             host,
-            connection: self.connection.clone(),
-            engine: self.engine.clone(),
+            connection: session.connection.clone(),
+            engine: session.engine_name.clone(),
             window_id,
             session: session.session.clone(),
             db: session.db.clone(),
+            db_type: session.db_type,
             opened_at: now_unix(),
         })?;
         Ok(Resolved {
@@ -213,5 +215,12 @@ fn db_type_for_engine(engine: &str) -> i32 {
         "postgresql" | "postgres" => 3,
         "mongodb" | "mongo" => 13,
         _ => 0,
+    }
+}
+
+fn cached_db_type(entry: &sessioncache::Entry) -> i32 {
+    match entry.db_type {
+        0 => db_type_for_engine(&entry.engine),
+        db_type => db_type,
     }
 }

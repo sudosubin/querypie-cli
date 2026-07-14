@@ -28,7 +28,9 @@ impl Connection {
 
 #[derive(Debug, Clone)]
 pub struct OpenedSession {
+    pub connection: String,
     pub session: String,
+    pub engine_name: String,
     pub engine: String,
     pub version: String,
     pub db: String,
@@ -166,8 +168,11 @@ impl Client {
         if resp.session.is_empty() {
             return Err(anyhow!("open returned no session"));
         }
+        let engine_name = conn.engine().to_string();
         Ok(OpenedSession {
+            connection: conn.name,
             session: resp.session,
+            engine_name,
             engine: resp.engine,
             version: resp.version,
             db: resp.db,
