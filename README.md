@@ -19,7 +19,7 @@ Query QueryPie databases from the terminal with webview authentication.
 ```sh
 querypie --host querypie.example.com auth login
 querypie --host querypie.example.com connection list
-querypie --host querypie.example.com -c '<connection>' --engine mysql query 'select 1;'
+querypie --host querypie.example.com query -c '<connection>' 'select 1;'
 ```
 
 ## Installation
@@ -43,26 +43,26 @@ Linux builds require the WebKitGTK and Tauri system packages used by the CI work
 | Command | Purpose |
 | --- | --- |
 | `auth login` | Open the QueryPie WebView login |
-| `auth status` | Show login status |
 | `auth logout` | Clear the WebView profile for a host |
+| `auth status` | Show login status |
 | `connection list` | List available QueryPie connections |
 | `database list` | List databases for a connection |
-| `schema list` | List schemas for a database |
-| `table list` | List tables |
-| `table describe <table>` | Show QueryPie table structure |
-| `table ddl <table>` | Show QueryPie table DDL |
 | `query <sql>` | Run SQL through QueryPie |
-| `session list` | List cached database sessions |
+| `schema list` | List schemas for a database |
 | `session clear` | Clear cached database sessions |
+| `session list` | List cached database sessions |
+| `table ddl <table>` | Show QueryPie table DDL |
+| `table describe <table>` | Show QueryPie table structure |
+| `table list` | List tables |
 
 ## Examples
 
 ```sh
 querypie --host querypie.example.com connection list
-querypie --host querypie.example.com -c '<connection>' --engine mysql database list
-querypie --host querypie.example.com -c '<connection>' --engine mysql --db example_db table list
-querypie --host querypie.example.com -c '<connection>' --engine mysql --db example_db table describe users
-querypie --host querypie.example.com -c '<connection>' --engine mysql --db example_db query 'select 1;'
+querypie --host querypie.example.com database list -c '<connection>'
+querypie --host querypie.example.com query -c '<connection>' --db example_db 'select 1;'
+querypie --host querypie.example.com table describe -c '<connection>' --db example_db users
+querypie --host querypie.example.com table list -c '<connection>' --db example_db
 ```
 
 Use `--output json` for machine-readable output.
