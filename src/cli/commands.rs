@@ -1,4 +1,8 @@
-use anyhow::Result;
+use std::fs;
+use std::io::{self, IsTerminal, Read};
+use std::path::{Path, PathBuf};
+
+use anyhow::{bail, Context, Result};
 use clap::{Args, Subcommand};
 use clap_complete::Shell;
 
@@ -34,17 +38,8 @@ pub(super) enum Command {
     Query {
         #[command(flatten)]
         selection: DatabaseSelectionArgs,
-        #[arg(
-            long,
-            default_value_t = 1000,
-            value_parser = clap::value_parser!(i32).range(1..),
-            help = "Maximum rows to fetch",
-            display_order = 6
-        )]
-        limit: i32,
         #[command(flatten)]
-        output: OutputArgs,
-        sql: String,
+        args: QueryArgs,
     },
     #[command(about = "List schemas for a database")]
     #[command(after_help = "EXAMPLES:\n  querypie schema list -c CONNECTION -d DATABASE")]
@@ -149,9 +144,33 @@ pub(super) enum TableCommand {
     },
 }
 
+#[derive(Debug, Args)]
+pub(super) struct QueryArgs {
+    #[arg(
+        short = 'f',
+        long,
+        value_name = "PATH",
+        help = "Read SQL from a file",
+        display_order = 5
+    )]
+    file: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = 1000,
+        value_parser = clap::value_parser!(i32).range(1..),
+        help = "Maximum rows to fetch",
+        display_order = 7
+    )]
+    limit: i32,
+    #[command(flatten)]
+    output: OutputArgs,
+    #[arg(value_name = "SQL")]
+    sql: Option<String>,
+}
+
 #[derive(Debug, Clone, Copy, Args)]
 pub(super) struct OutputArgs {
-    #[arg(long, help = "Do not truncate table output", display_order = 7)]
+    #[arg(long, help = "Do not truncate table output", display_order = 8)]
     pub(super) no_truncate: bool,
     #[arg(
         short = 'o',
@@ -159,7 +178,7 @@ pub(super) struct OutputArgs {
         value_enum,
         default_value_t = OutputFormat::Text,
         help = "Output format",
-        display_order = 8
+        display_order = 9
     )]
     pub(super) output: OutputFormat,
 }
@@ -215,7 +234,7 @@ pub(super) struct TableSelectionArgs {
         value_name = "SCHEMA",
         help = "Schema name to use",
         add = clap_complete::ArgValueCompleter::new(super::completion::complete_schemas),
-        display_order = 9
+        display_order = 10
     )]
     schema: Option<String>,
 }
@@ -227,9 +246,10 @@ impl Command {
             Command::Completion { .. } => Ok(()),
             Command::Connection { command } => command.run(global),
             Command::Database { command } => command.run(global),
-            Command::Query {
-                sql, limit, output, ..
-            } => data_cmd::run_query(global, sql, limit, output),
+            Command::Query { args, .. } => {
+                let (sql, limit, output) = args.into_sql_limit_output()?;
+                data_cmd::run_query(global, sql, limit, output)
+            }
             Command::Schema { command } => command.run(global),
             Command::Session { command } => command.run(global),
             Command::Table { command } => command.run(global),
@@ -361,10 +381,185 @@ impl TableSelectionArgs {
     }
 }
 
+impl QueryArgs {
+    fn into_sql_limit_output(self) -> Result<(String, i32, OutputArgs)> {
+        let QueryArgs {
+            sql,
+            file,
+            limit,
+            output,
+        } = self;
+        let stdin_is_terminal = io::stdin().is_terminal();
+        let sql = resolve_query_sql(sql, file, stdin_is_terminal, read_stdin, read_file)?;
+        Ok((sql, limit, output))
+    }
+}
+
 pub(super) fn fmt(output: OutputArgs) -> FormatOptions {
     FormatOptions {
         output: output.output,
         truncate: !output.no_truncate && !no_truncate_env(),
+    }
+}
+
+const NO_SQL_ERROR: &str = "no SQL provided; pass SQL, use `query -`, or use `query --file <PATH>`";
+const MULTIPLE_SQL_SOURCES_ERROR: &str =
+    "provide exactly one SQL source; pass SQL, use `query -`, or use `query --file <PATH>`";
+
+enum QuerySqlSource {
+    Inline(String),
+    Stdin,
+    File(PathBuf),
+}
+
+fn resolve_query_sql(
+    sql: Option<String>,
+    file: Option<PathBuf>,
+    stdin_is_terminal: bool,
+    mut read_stdin: impl FnMut() -> Result<String>,
+    mut read_file: impl FnMut(&Path) -> Result<String>,
+) -> Result<String> {
+    let sql = match query_sql_source(sql, file, stdin_is_terminal)? {
+        QuerySqlSource::Inline(sql) => sql,
+        QuerySqlSource::Stdin => read_stdin()?,
+        QuerySqlSource::File(path) => read_file(&path)?,
+    };
+
+    validate_query_sql(sql)
+}
+
+fn query_sql_source(
+    sql: Option<String>,
+    file: Option<PathBuf>,
+    stdin_is_terminal: bool,
+) -> Result<QuerySqlSource> {
+    match (sql, file, stdin_is_terminal) {
+        (Some(_), Some(_), _) => bail!(MULTIPLE_SQL_SOURCES_ERROR),
+        (None, Some(path), _) if path == Path::new("-") => {
+            bail!("`--file -` is not supported; use `query -` to read SQL from stdin")
+        }
+        (None, Some(path), _) => Ok(QuerySqlSource::File(path)),
+        (Some(sql), None, _) if sql == "-" => Ok(QuerySqlSource::Stdin),
+        (Some(sql), None, _) => Ok(QuerySqlSource::Inline(sql)),
+        (None, None, false) => Ok(QuerySqlSource::Stdin),
+        (None, None, true) => bail!(NO_SQL_ERROR),
+    }
+}
+
+fn validate_query_sql(sql: String) -> Result<String> {
+    if sql.trim().is_empty() {
+        bail!("SQL is empty");
+    }
+
+    Ok(sql)
+}
+
+fn read_stdin() -> Result<String> {
+    let mut sql = String::new();
+    io::stdin()
+        .read_to_string(&mut sql)
+        .context("failed to read SQL from stdin")?;
+    Ok(sql)
+}
+
+fn read_file(path: &Path) -> Result<String> {
+    fs::read_to_string(path).with_context(|| format!("failed to read SQL from {}", path.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn resolve(
+        sql: Option<&str>,
+        file: Option<&str>,
+        stdin_is_terminal: bool,
+        stdin_sql: &str,
+        file_sql: &str,
+    ) -> Result<String> {
+        resolve_query_sql(
+            sql.map(str::to_owned),
+            file.map(PathBuf::from),
+            stdin_is_terminal,
+            || Ok(stdin_sql.to_owned()),
+            |_| Ok(file_sql.to_owned()),
+        )
+    }
+
+    #[test]
+    fn resolves_sql_sources() {
+        let cases = [
+            (
+                "positional sql",
+                Some("  select 1;\n"),
+                None,
+                true,
+                "from stdin",
+                "from file",
+                "  select 1;\n",
+            ),
+            (
+                "dash from stdin",
+                Some("-"),
+                None,
+                true,
+                "select from stdin;\n",
+                "from file",
+                "select from stdin;\n",
+            ),
+            (
+                "piped stdin",
+                None,
+                None,
+                false,
+                "select from stdin;\n",
+                "from file",
+                "select from stdin;\n",
+            ),
+            (
+                "file",
+                None,
+                Some("query.sql"),
+                true,
+                "from stdin",
+                "  select from file;\n",
+                "  select from file;\n",
+            ),
+        ];
+
+        for (name, sql, file, stdin_is_terminal, stdin_sql, file_sql, expected) in cases {
+            let actual = resolve(sql, file, stdin_is_terminal, stdin_sql, file_sql)
+                .unwrap_or_else(|err| panic!("{name}: {err:#}"));
+
+            assert_eq!(actual, expected, "{name}");
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_sql_sources() {
+        let cases = [
+            (
+                "file and positional sql",
+                Some("select 1;"),
+                Some("query.sql"),
+                true,
+                MULTIPLE_SQL_SOURCES_ERROR,
+            ),
+            ("empty sql", Some("   \n\t"), None, true, "SQL is empty"),
+            ("file dash", None, Some("-"), true, "use `query -`"),
+            ("missing sql", None, None, true, NO_SQL_ERROR),
+        ];
+
+        for (name, sql, file, stdin_is_terminal, expected) in cases {
+            let err = resolve(sql, file, stdin_is_terminal, "from stdin", "from file")
+                .expect_err(name)
+                .to_string();
+
+            assert!(
+                err.contains(expected),
+                "{name}: expected {err:?} to contain {expected:?}"
+            );
+        }
     }
 }
 
@@ -397,9 +592,9 @@ mod tests {
         let cli = Cli::try_parse_from(["querypie", "query", "--limit", "1", "select 1;"])
             .expect("limit 1 should parse");
 
-        let Command::Query { limit, .. } = cli.command else {
+        let Command::Query { args, .. } = cli.command else {
             panic!("expected query command");
         };
-        assert_eq!(limit, 1);
+        assert_eq!(args.limit, 1);
     }
 }
