@@ -35,7 +35,12 @@ pub(super) enum Command {
         #[command(flatten)]
         selection: DatabaseSelectionArgs,
         sql: String,
-        #[arg(long, default_value_t = 1000)]
+        #[arg(
+            long,
+            default_value_t = 1000,
+            value_parser = clap::value_parser!(i32).range(1..),
+            help = "Maximum rows to fetch"
+        )]
         limit: i32,
         #[command(flatten)]
         output: OutputArgs,
@@ -366,4 +371,29 @@ fn no_truncate_env() -> bool {
             )
         })
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use super::*;
+    use crate::cli::Cli;
+
+    #[test]
+    fn query_limit_starts_at_one() {
+        for arg in ["--limit=-1", "--limit=0"] {
+            let err = Cli::try_parse_from(["querypie", "query", arg, "select 1;"])
+                .expect_err("limit below 1 should be rejected");
+            assert_eq!(err.kind(), clap::error::ErrorKind::ValueValidation);
+        }
+
+        let cli = Cli::try_parse_from(["querypie", "query", "--limit", "1", "select 1;"])
+            .expect("limit 1 should parse");
+
+        let Command::Query { limit, .. } = cli.command else {
+            panic!("expected query command");
+        };
+        assert_eq!(limit, 1);
+    }
 }

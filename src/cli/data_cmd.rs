@@ -60,6 +60,6 @@ pub(super) fn run_query(
 ) -> Result<()> {
     global.with_session(|r| {
         let res = r.client.query(&r.session, &r.db, &sql, limit, r.db_type)?;
-        formatting::query_result(&res, fmt(output))
+        formatting::query_result(&res, limit, fmt(output))
     })
 }

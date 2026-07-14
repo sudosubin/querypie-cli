@@ -187,9 +187,9 @@ pub fn table_structure(structure: &TableStructure, opts: Options) -> Result<()> 
     Ok(())
 }
 
-pub fn query_result(res: &ResultSet, opts: Options) -> Result<()> {
+pub fn query_result(res: &ResultSet, limit: i32, opts: Options) -> Result<()> {
     if opts.output == OutputFormat::Json {
-        print_json(&serde_json::json!({ "columns": &res.columns, "rows": query_rows_json(res) }))?;
+        print_json(&query_result_json(res, limit))?;
         return Ok(());
     }
 
@@ -211,7 +211,7 @@ pub fn query_result(res: &ResultSet, opts: Options) -> Result<()> {
         }),
         opts.truncate,
     );
-    println!("\n({} rows)", res.rows.len());
+    println!("\n{}", query_result_summary(res, limit));
     Ok(())
 }
 
@@ -243,4 +243,74 @@ fn query_rows_json(res: &ResultSet) -> Vec<Vec<serde_json::Value>> {
                 .collect()
         })
         .collect()
+}
+
+fn query_result_json(res: &ResultSet, limit: i32) -> serde_json::Value {
+    serde_json::json!({
+        "columns": &res.columns,
+        "rows": query_rows_json(res),
+        "limit": limit,
+        "limit_reached": query_limit_reached(res.rows.len(), limit),
+    })
+}
+
+fn query_limit_reached(row_count: usize, limit: i32) -> bool {
+    row_count >= limit as usize
+}
+
+fn query_result_summary(res: &ResultSet, limit: i32) -> String {
+    let row_count = res.rows.len();
+    if query_limit_reached(row_count, limit) {
+        format!("({row_count} rows, limit reached)")
+    } else {
+        format!("({row_count} rows)")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::qpapi::{Cell, ColumnInfo};
+
+    #[test]
+    fn query_summary_reports_limit_status() {
+        for (row_count, limit, expected) in [
+            (1000, 1000, "(1000 rows, limit reached)"),
+            (42, 1000, "(42 rows)"),
+        ] {
+            assert_eq!(
+                query_result_summary(&result_set(row_count), limit),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn query_json_includes_limit_metadata() {
+        let res = result_set(1);
+
+        let value = query_result_json(&res, 1);
+
+        assert_eq!(value["limit"], 1);
+        assert_eq!(value["limit_reached"], true);
+        assert_eq!(value["columns"][0]["name"], "id");
+        assert_eq!(value["rows"][0][0], "1");
+    }
+
+    fn result_set(row_count: usize) -> ResultSet {
+        ResultSet {
+            columns: vec![ColumnInfo {
+                name: "id".to_string(),
+                type_name: "System.Int64".to_string(),
+            }],
+            rows: (0..row_count)
+                .map(|index| {
+                    vec![Cell {
+                        value: (index + 1).to_string(),
+                        is_null: false,
+                    }]
+                })
+                .collect(),
+        }
+    }
 }
