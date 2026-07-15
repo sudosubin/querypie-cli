@@ -466,9 +466,23 @@ fn read_file(path: &Path) -> Result<String> {
     fs::read_to_string(path).with_context(|| format!("failed to read SQL from {}", path.display()))
 }
 
+fn no_truncate_env() -> bool {
+    std::env::var("QUERYPIE_NO_TRUNCATE")
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes"
+            )
+        })
+        .unwrap_or(false)
+}
+
 #[cfg(test)]
 mod tests {
+    use clap::Parser;
+
     use super::*;
+    use crate::cli::Cli;
 
     fn resolve(
         sql: Option<&str>,
@@ -561,25 +575,6 @@ mod tests {
             );
         }
     }
-}
-
-fn no_truncate_env() -> bool {
-    std::env::var("QUERYPIE_NO_TRUNCATE")
-        .map(|value| {
-            matches!(
-                value.trim().to_ascii_lowercase().as_str(),
-                "1" | "true" | "yes"
-            )
-        })
-        .unwrap_or(false)
-}
-
-#[cfg(test)]
-mod tests {
-    use clap::Parser;
-
-    use super::*;
-    use crate::cli::Cli;
 
     #[test]
     fn query_limit_starts_at_one() {
