@@ -33,7 +33,6 @@ impl Client {
         limit: i32,
         dialect: i32,
     ) -> Result<ResultSet> {
-        let limit = if limit <= 0 { 1000 } else { limit };
         let dialect = if dialect == 0 { 1 } else { dialect };
 
         let parsed: pb::ParseResponse = self.unary(

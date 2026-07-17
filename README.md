@@ -62,6 +62,7 @@ Linux builds require the WebKitGTK and Tauri system packages used by the CI work
 querypie --host querypie.example.com connection list
 querypie --host querypie.example.com database list -c '<connection>'
 querypie --host querypie.example.com query -c '<connection>' --db example_db 'select 1;'
+querypie --host querypie.example.com query -c '<connection>' --db example_db --limit 100 'select * from users;'
 querypie --host querypie.example.com table describe -c '<connection>' --db example_db users
 querypie --host querypie.example.com table list -c '<connection>' --db example_db
 ```
@@ -121,9 +122,11 @@ dynamic candidates are skipped silently.
 - `--output text`: default human-readable output
 - `--output json`: raw JSON output
 - `--no-truncate`: do not shorten long table cells
+- `--limit <N>`: maximum query rows to fetch, defaults to `1000` and must be at least `1`
 - `QUERYPIE_NO_TRUNCATE=1`: disable truncation globally
 
 `NULL` values are rendered distinctly in text output.
+Text query output reports `(N rows, limit reached)` when the result reaches the configured row limit. JSON query output includes `limit` and `limit_reached` fields alongside `columns` and `rows`.
 
 ## How It Works
 
