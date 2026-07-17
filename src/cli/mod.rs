@@ -74,7 +74,7 @@ struct Cli {
         value_name = "HOST",
         help = "QueryPie host",
         add = clap_complete::ArgValueCompleter::new(completion::complete_hosts),
-        display_order = 5
+        display_order = 6
     )]
     host: Option<String>,
     #[arg(
@@ -82,7 +82,7 @@ struct Cli {
         long,
         global = true,
         help = "Print verbose diagnostics",
-        display_order = 10
+        display_order = 11
     )]
     verbose: bool,
     #[command(subcommand)]
