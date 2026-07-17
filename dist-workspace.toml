@@ -20,10 +20,16 @@ github-custom-job-permissions = { "publish-crate" = { id-token = "write", conten
 global = "ubuntu-24.04"
 aarch64-apple-darwin = "macos-latest"
 x86_64-apple-darwin = "macos-15-intel"
-aarch64-unknown-linux-gnu = "ubuntu-24.04-arm"
-x86_64-unknown-linux-gnu = "ubuntu-24.04"
 aarch64-pc-windows-msvc = "windows-11-arm"
 x86_64-pc-windows-msvc = "windows-latest"
+
+[dist.github-custom-runners.aarch64-unknown-linux-gnu]
+runner = "ubuntu-24.04-arm"
+container = { image = "buildpack-deps:22.04", host = "aarch64-unknown-linux-gnu", package_manager = "apt" }
+
+[dist.github-custom-runners.x86_64-unknown-linux-gnu]
+runner = "ubuntu-24.04"
+container = { image = "buildpack-deps:22.04", host = "x86_64-unknown-linux-gnu", package_manager = "apt" }
 
 [dist.dependencies.apt]
 build-essential = { version = "*", targets = ["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"] }
