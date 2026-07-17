@@ -34,16 +34,17 @@ pub(super) enum Command {
     Query {
         #[command(flatten)]
         selection: DatabaseSelectionArgs,
-        sql: String,
         #[arg(
             long,
             default_value_t = 1000,
             value_parser = clap::value_parser!(i32).range(1..),
-            help = "Maximum rows to fetch"
+            help = "Maximum rows to fetch",
+            display_order = 6
         )]
         limit: i32,
         #[command(flatten)]
         output: OutputArgs,
+        sql: String,
     },
     #[command(about = "List schemas for a database")]
     #[command(after_help = "EXAMPLES:\n  querypie schema list -c CONNECTION -d DATABASE")]
@@ -150,16 +151,17 @@ pub(super) enum TableCommand {
 
 #[derive(Debug, Clone, Copy, Args)]
 pub(super) struct OutputArgs {
+    #[arg(long, help = "Do not truncate table output", display_order = 7)]
+    pub(super) no_truncate: bool,
     #[arg(
         short = 'o',
         long,
         value_enum,
         default_value_t = OutputFormat::Text,
-        help = "Output format"
+        help = "Output format",
+        display_order = 8
     )]
     pub(super) output: OutputFormat,
-    #[arg(long, help = "Do not truncate table output")]
-    pub(super) no_truncate: bool,
 }
 
 #[derive(Debug, Clone, Args)]
@@ -169,7 +171,8 @@ pub(super) struct ConnectionArg {
         long,
         value_name = "CONNECTION",
         help = "QueryPie connection name",
-        add = clap_complete::ArgValueCompleter::new(super::completion::complete_connections)
+        add = clap_complete::ArgValueCompleter::new(super::completion::complete_connections),
+        display_order = 2
     )]
     connection: Option<String>,
 }
@@ -182,7 +185,8 @@ pub(super) struct ConnectionSelectionArgs {
         long,
         value_name = "ENGINE",
         help = "Database engine name, such as mysql",
-        add = clap_complete::ArgValueCompleter::new(super::completion::complete_engines)
+        add = clap_complete::ArgValueCompleter::new(super::completion::complete_engines),
+        display_order = 4
     )]
     engine: Option<String>,
 }
@@ -196,7 +200,8 @@ pub(super) struct DatabaseSelectionArgs {
         long = "db",
         value_name = "DATABASE",
         help = "Database name to use",
-        add = clap_complete::ArgValueCompleter::new(super::completion::complete_databases)
+        add = clap_complete::ArgValueCompleter::new(super::completion::complete_databases),
+        display_order = 3
     )]
     database: Option<String>,
 }
@@ -209,7 +214,8 @@ pub(super) struct TableSelectionArgs {
         long,
         value_name = "SCHEMA",
         help = "Schema name to use",
-        add = clap_complete::ArgValueCompleter::new(super::completion::complete_schemas)
+        add = clap_complete::ArgValueCompleter::new(super::completion::complete_schemas),
+        display_order = 9
     )]
     schema: Option<String>,
 }

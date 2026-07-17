@@ -119,13 +119,14 @@ dynamic candidates are skipped silently.
 
 ## Output
 
-- `--output text`: default human-readable output
-- `--output json`: raw JSON output
-- `--no-truncate`: do not shorten long table cells
+- `--color auto|always|never`: control ANSI color (`auto` colors terminal output unless `NO_COLOR` is set)
 - `--limit <N>`: maximum query rows to fetch, defaults to `1000` and must be at least `1`
+- `--no-truncate`: do not shorten long table cells
+- `--output json`: raw JSON output
+- `--output text`: default human-readable output
 - `QUERYPIE_NO_TRUNCATE=1`: disable truncation globally
 
-`NULL` values are rendered distinctly in text output.
+`NULL` values are rendered distinctly in colored text output. JSON output never includes ANSI escape sequences.
 Text query output reports `(N rows, limit reached)` when the result reaches the configured row limit. JSON query output includes `limit` and `limit_reached` fields alongside `columns` and `rows`.
 
 ## How It Works
@@ -153,10 +154,10 @@ querypie --host querypie.example.com session clear
 ## Development
 
 ```sh
-cargo fmt --all -- --check
-cargo clippy --all-targets --all-features -- -D warnings
-cargo test --all-features
 cargo build --all-features
+cargo clippy --all-targets --all-features -- -D warnings
+cargo fmt --all -- --check
+cargo test --all-features
 ```
 
 ## License

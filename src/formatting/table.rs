@@ -7,7 +7,7 @@ where
     let rows = rows.into_iter().collect::<Vec<_>>();
     if headers.is_empty() {
         for row in rows {
-            println!("{}", row.join("\t"));
+            anstream::println!("{}", row.join("\t"));
         }
         return;
     }
@@ -49,7 +49,7 @@ fn print_row(row: Vec<String>, widths: &[usize]) {
             pad_to_width(truncate_to_width(&value, width), width)
         })
         .collect::<Vec<_>>();
-    println!("{}", cells.join("  "));
+    anstream::println!("{}", cells.join("  "));
 }
 
 fn fit_widths_to_terminal(widths: &mut [usize]) {
