@@ -58,13 +58,20 @@ impl Client {
         cookie: impl Into<String>,
         window_id: impl Into<String>,
     ) -> Result<Self> {
+        Self::new_with_timeout(host, cookie, window_id, Duration::from_secs(60))
+    }
+
+    pub fn new_with_timeout(
+        host: impl Into<String>,
+        cookie: impl Into<String>,
+        window_id: impl Into<String>,
+        timeout: Duration,
+    ) -> Result<Self> {
         Ok(Self {
             host: host.into(),
             cookie: cookie.into(),
             window_id: window_id.into(),
-            http: HttpClient::builder()
-                .timeout(Duration::from_secs(60))
-                .build()?,
+            http: HttpClient::builder().timeout(timeout).build()?,
         })
     }
 

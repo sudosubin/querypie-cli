@@ -1,18 +1,25 @@
 mod auth_cmd;
 mod commands;
+mod completion;
 mod data_cmd;
 mod session;
 mod session_cmd;
 
 use anyhow::Result;
-use clap::Parser;
-use std::fmt;
+use clap::{CommandFactory, Parser};
+use clap_complete::env::Shells;
+use std::{
+    fmt,
+    io::{self, Write},
+};
 
 use self::commands::Command;
 use crate::auth;
 use crate::config;
 use crate::formatting::style;
 use crate::qpapi::GrpcError;
+
+const COMPLETE_ENV: &str = "QUERYPIE_COMPLETE";
 
 #[derive(Debug, Parser)]
 #[command(name = "querypie")]
@@ -25,7 +32,13 @@ use crate::qpapi::GrpcError;
   querypie query -c CONNECTION 'select 1;'"
 )]
 struct Cli {
-    #[arg(long, global = true, value_name = "HOST", help = "QueryPie host")]
+    #[arg(
+        long,
+        global = true,
+        value_name = "HOST",
+        help = "QueryPie host",
+        add = clap_complete::ArgValueCompleter::new(completion::complete_hosts)
+    )]
     host: Option<String>,
     #[arg(short, long, global = true, help = "Print verbose diagnostics")]
     verbose: bool,
@@ -51,12 +64,68 @@ pub(super) struct Global {
 }
 
 pub fn run() -> Result<()> {
+    if complete_from_env()? {
+        return Ok(());
+    }
     let cli = Cli::parse();
+    if let Command::Completion { shell } = &cli.command {
+        return print_completion(*shell);
+    }
     let (global, command) = cli.into_global_and_command()?;
     command.run(&global)
 }
 
+fn complete_from_env() -> Result<bool> {
+    let current_dir = std::env::current_dir().ok();
+    Ok(
+        clap_complete::CompleteEnv::with_factory(Cli::public_command_for_completion)
+            .var(COMPLETE_ENV)
+            .try_complete(std::env::args_os(), current_dir.as_deref())?,
+    )
+}
+
+fn print_completion(shell: clap_complete::Shell) -> Result<()> {
+    let mut completions = Vec::new();
+    let completer = std::env::current_exe()?.to_string_lossy().into_owned();
+    let shells = Shells::builtins();
+    let shell = shells
+        .completer(&shell.to_string())
+        .expect("clap shell values should match dynamic completers");
+    shell.write_registration(
+        COMPLETE_ENV,
+        "querypie",
+        "querypie",
+        &completer,
+        &mut completions,
+    )?;
+    if let Err(err) = io::stdout().write_all(&completions) {
+        if err.kind() != io::ErrorKind::BrokenPipe {
+            return Err(err.into());
+        }
+    }
+    Ok(())
+}
+
 impl Cli {
+    fn public_command_for_completion() -> clap::Command {
+        // clap_complete includes hidden subcommands, so rebuild auth without internal cookie helpers.
+        Self::command().mut_subcommand("auth", |_| {
+            clap::Command::new("auth")
+                .about("Log in, log out, and inspect authentication")
+                .subcommand(
+                    clap::Command::new("login").about("Open a webview and log in to QueryPie"),
+                )
+                .subcommand(
+                    clap::Command::new("logout")
+                        .about("Log out and remove QueryPie webview session data"),
+                )
+                .subcommand(
+                    clap::Command::new("status")
+                        .about("Show current QueryPie authentication status"),
+                )
+        })
+    }
+
     fn into_global_and_command(self) -> Result<(Global, Command)> {
         let cfg = config::load(self.config.as_deref())?;
         let mut global = Global {
