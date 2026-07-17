@@ -27,20 +27,20 @@ pub(crate) fn normalize_host(host: &str) -> String {
 fn config_dir() -> PathBuf {
     env_dir("XDG_CONFIG_HOME")
         .unwrap_or_else(|| home_dir().join(".config"))
-        .join("querypie")
+        .join("querypie-cli")
 }
 
 pub(crate) fn cache_dir() -> PathBuf {
     env_dir("XDG_CACHE_HOME")
         .unwrap_or_else(|| home_dir().join(".cache"))
-        .join("querypie")
+        .join("querypie-cli")
 }
 
 fn data_dir() -> PathBuf {
     dirs::data_dir()
         .or_else(dirs::home_dir)
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("querypie")
+        .join("querypie-cli")
 }
 
 fn env_dir(name: &str) -> Option<PathBuf> {
