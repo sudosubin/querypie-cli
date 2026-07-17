@@ -7,7 +7,6 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::auth::{self, AuthService};
 use crate::config;
-use crate::paths;
 use crate::qpapi::{Client, GrpcError};
 use crate::sessioncache;
 
@@ -57,11 +56,12 @@ impl CompletionSession {
         let opened = client.open_session(&ctx.connection, &ctx.engine)?;
         sessioncache::put(sessioncache::Entry {
             host: ctx.host.clone(),
-            connection: ctx.connection.clone(),
-            engine: cache_engine(ctx, &opened.engine),
+            connection: opened.connection.clone(),
+            engine: opened.engine_name.clone(),
             window_id,
             session: opened.session.clone(),
             db: opened.db.clone(),
+            db_type: opened.db_type,
             opened_at: now_unix(),
         })?;
         Ok(Self {
@@ -219,39 +219,11 @@ fn resolve_session(ctx: &CompletionContext, cookie: &str) -> Result<CompletionSe
 }
 
 fn cached_session(ctx: &CompletionContext) -> Option<sessioncache::Entry> {
-    if let Some(entry) = sessioncache::get(&ctx.host, &ctx.connection, &ctx.engine) {
-        return Some(entry);
-    }
-    if !ctx.engine.is_empty() {
-        return None;
-    }
-
-    let host = paths::normalize_host(&ctx.host);
-    unique_cached_session(sessioncache::list(), &host, &ctx.connection)
-}
-
-fn unique_cached_session(
-    entries: impl IntoIterator<Item = sessioncache::Entry>,
-    host: &str,
-    connection: &str,
-) -> Option<sessioncache::Entry> {
-    let mut matches = entries
-        .into_iter()
-        .filter(|entry| entry.host == host && entry.connection == connection);
-    let entry = matches.next()?;
-    matches.next().is_none().then_some(entry)
+    sessioncache::get_matching(&ctx.host, &ctx.connection, &ctx.engine)
 }
 
 fn client_with_window(ctx: &CompletionContext, cookie: &str, window_id: String) -> Result<Client> {
     Client::new_with_timeout(&ctx.host, cookie, window_id, COMPLETE_TIMEOUT)
-}
-
-fn cache_engine(ctx: &CompletionContext, opened_engine: &str) -> String {
-    if ctx.engine.is_empty() {
-        opened_engine.to_string()
-    } else {
-        ctx.engine.clone()
-    }
 }
 
 fn selected_database(ctx: &CompletionContext, fallback: String) -> String {
@@ -466,64 +438,5 @@ mod tests {
             "example-main [US]",
             std::ffi::OsStr::new("'example")
         ));
-    }
-
-    #[test]
-    fn selects_unique_cached_session() {
-        let entry = cache_entry("querypie.example.com", "main", "mysql");
-
-        let selected = unique_cached_session(
-            vec![
-                entry.clone(),
-                cache_entry("querypie.example.com", "analytics", "postgresql"),
-            ],
-            "querypie.example.com",
-            "main",
-        );
-
-        assert_eq!(
-            selected.map(|entry| entry.engine),
-            Some("mysql".to_string())
-        );
-    }
-
-    #[test]
-    fn ignores_ambiguous_cached_sessions() {
-        let selected = unique_cached_session(
-            vec![
-                cache_entry("querypie.example.com", "main", "mysql"),
-                cache_entry("querypie.example.com", "main", "postgresql"),
-            ],
-            "querypie.example.com",
-            "main",
-        );
-
-        assert!(selected.is_none());
-    }
-
-    #[test]
-    fn stores_opened_engine_when_context_engine_is_empty() {
-        assert_eq!(
-            cache_engine(&CompletionContext::default(), "mysql"),
-            "mysql"
-        );
-
-        let ctx = CompletionContext {
-            engine: "postgresql".to_string(),
-            ..CompletionContext::default()
-        };
-        assert_eq!(cache_engine(&ctx, "mysql"), "postgresql");
-    }
-
-    fn cache_entry(host: &str, connection: &str, engine: &str) -> sessioncache::Entry {
-        sessioncache::Entry {
-            host: host.to_string(),
-            connection: connection.to_string(),
-            engine: engine.to_string(),
-            window_id: format!("{engine}-window"),
-            session: format!("{engine}-session"),
-            db: format!("{engine}_db"),
-            opened_at: 1,
-        }
     }
 }
