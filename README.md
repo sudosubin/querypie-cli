@@ -86,7 +86,7 @@ querypie --host querypie.example.com connection list --output json
 Default path:
 
 ```text
-~/.config/querypie/config.json
+~/.config/querypie-cli/config.json
 ```
 
 Example:
@@ -135,7 +135,7 @@ Text query output reports `(N rows, limit reached)` when the result reaches the 
 2. The CLI reads httpOnly cookies through the same WebView profile.
 3. API calls use QueryPie's gRPC-Web endpoints.
 4. Expired access tokens are refreshed through the WebView cookie store.
-5. Database sessions are cached under `~/.cache/querypie`.
+5. Database sessions are cached under `~/.cache/querypie-cli`.
 
 ## Troubleshooting
 
