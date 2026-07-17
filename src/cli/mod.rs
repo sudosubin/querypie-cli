@@ -42,6 +42,8 @@ impl ColorChoice {
 #[derive(Debug, Parser)]
 #[command(name = "querypie")]
 #[command(about = "Query QueryPie databases from the terminal")]
+#[command(display_name = "querypie-cli")]
+#[command(version)]
 #[command(
     long_about = "QueryPie CLI authenticates with a lightweight webview session and runs catalog and SQL commands through QueryPie.",
     after_help = "EXAMPLES:
