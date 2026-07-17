@@ -24,11 +24,29 @@ querypie --host querypie.example.com query -c '<connection>' 'select 1;'
 
 ## Installation
 
+Linux / macOS:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/sudosubin/querypie-cli/main/scripts/install.sh | sh
+```
+
+Windows (PowerShell):
+
+```powershell
+powershell -c "irm https://raw.githubusercontent.com/sudosubin/querypie-cli/main/scripts/install.ps1 | iex"
+```
+
+The installer downloads the matching binary from [GitHub Releases](https://github.com/sudosubin/querypie-cli/releases), verifies its checksum, and installs it (Linux/macOS: `~/.local/bin`, Windows: `%LOCALAPPDATA%\querypie-cli\bin`). Set `QUERYPIE_VERSION` to pin a release or `QUERYPIE_INSTALL_DIR` to change the location:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/sudosubin/querypie-cli/main/scripts/install.sh | QUERYPIE_VERSION=v0.1.1 sh
+```
+
+Or install with Cargo:
+
 ```sh
 cargo install querypie-cli
 ```
-
-Or download a binary from [GitHub Releases](https://github.com/sudosubin/querypie-cli/releases).
 
 Build from source:
 
@@ -36,7 +54,7 @@ Build from source:
 cargo build --release
 ```
 
-Linux builds require the WebKitGTK and Tauri system packages used by the CI workflow.
+`querypie` uses a WebView for login: Linux needs WebKitGTK (`libwebkit2gtk-4.1`) at runtime, and Windows needs the Edge WebView2 Runtime (preinstalled on current Windows).
 
 ## Commands
 
