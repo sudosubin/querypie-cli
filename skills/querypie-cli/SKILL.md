@@ -1,21 +1,13 @@
 ---
-name: querypie
-description: Runs SQL and inspects schemas, tables, and DDL against QueryPie-managed databases from the terminal. Use whenever a database is reachable only through a QueryPie connection. Typical requests include "query the <name> db", "show the schema of <table>", "list the QueryPie connections", and "/querypie". Installs the querypie CLI if missing.
+name: querypie-cli
+description: Runs SQL and inspects schemas, tables, and DDL against QueryPie-managed databases from the terminal. Use whenever a database is reachable only through a QueryPie connection. Typical requests include "query the <name> db", "show the schema of <table>", "list the QueryPie connections", and "/querypie". Requires the querypie CLI to be installed separately.
 ---
 
-# QueryPie
+# querypie-cli
 
 ## Prerequisites
 
-If `querypie` is missing, tell the user it needs to install the CLI from GitHub Releases and get their go-ahead before running anything — do not install silently.
-
-Once confirmed (Linux/macOS):
-
-```sh
-command -v querypie >/dev/null || curl --proto '=https' --tlsv1.2 -fsSL https://github.com/sudosubin/querypie-cli/releases/latest/download/querypie-cli-installer.sh | sh
-```
-
-The installer is a versioned GitHub Release asset (not a mutable branch file), verifies the downloaded binary's checksum, and installs to `~/.local/bin`. For manual provenance verification (e.g. security review), see the README.
+Check with `command -v querypie`. If it's missing, don't install it yourself: tell the user the CLI needs to be installed first, and point them at the options in the [README](https://github.com/sudosubin/querypie-cli#installation): `cargo install querypie-cli`, or a prebuilt binary from [GitHub Releases](https://github.com/sudosubin/querypie-cli/releases).
 
 ## Config
 
