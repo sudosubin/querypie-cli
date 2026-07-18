@@ -46,6 +46,12 @@ sh querypie-cli-installer.sh
 
 Set `QUERYPIE_CLI_INSTALL_DIR` to change the install location.
 
+Or install with Homebrew:
+
+```sh
+brew install sudosubin/tap/querypie-cli
+```
+
 Or install with Cargo:
 
 ```sh
