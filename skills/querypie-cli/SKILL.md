@@ -7,7 +7,7 @@ description: Runs SQL and inspects schemas, tables, and DDL against QueryPie-man
 
 ## Prerequisites
 
-Check with `command -v querypie`. If it's missing, don't install it yourself: tell the user the CLI needs to be installed first, and point them at the options in the [README](https://github.com/sudosubin/querypie-cli#installation): `cargo install querypie-cli`, or a prebuilt binary from [GitHub Releases](https://github.com/sudosubin/querypie-cli/releases).
+If `command -v querypie` fails, don't install it yourself: point the user to the [Installation section](https://github.com/sudosubin/querypie-cli#installation) of the README.
 
 ## Config
 
