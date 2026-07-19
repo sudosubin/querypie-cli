@@ -4,11 +4,12 @@ members = ["cargo:."]
 [dist]
 cargo-dist-version = "0.30.3"
 ci = "github"
-installers = ["shell", "powershell"]
+installers = ["shell", "powershell", "homebrew"]
+tap = "sudosubin/homebrew-tap"
 install-path = "~/.local/bin"
 github-attestations = true
 github-attestations-phase = "host"
-publish-jobs = ["./publish-crate"]
+publish-jobs = ["homebrew", "./publish-crate"]
 github-build-setup = "../build-setup.yml"
 targets = [
   "aarch64-apple-darwin",
