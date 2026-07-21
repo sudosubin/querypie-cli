@@ -270,14 +270,14 @@ mod tests {
     #[test]
     fn exact_lookup_returns_canonical_cache_entry() {
         let file = cache_file(vec![
-            ("production-main [US]", "mysql", "s1", 1),
-            ("production-main [US] readonly", "mysql", "s2", 1),
+            ("production-main", "mysql", "s1", 1),
+            ("production-main readonly", "mysql", "s2", 1),
         ]);
 
-        let entry = find_matching(&file, "example.querypie", "production-main [US]", "")
+        let entry = find_matching(&file, "example.querypie", "production-main", "")
             .expect("expected exact cache match");
 
-        assert_eq!(entry.connection, "production-main [US]");
+        assert_eq!(entry.connection, "production-main");
         assert_eq!(entry.engine, "mysql");
         assert_eq!(entry.session, "s1");
         assert_eq!(entry.db_type, 1);
@@ -285,19 +285,19 @@ mod tests {
 
     #[test]
     fn substring_lookup_returns_single_canonical_match() {
-        let file = cache_file(vec![("production-main [US]", "mysql", "s1", 1)]);
+        let file = cache_file(vec![("production-main", "mysql", "s1", 1)]);
 
         let entry =
             find_matching(&file, "example.querypie", "prod", "").expect("expected cache match");
 
-        assert_eq!(entry.connection, "production-main [US]");
+        assert_eq!(entry.connection, "production-main");
     }
 
     #[test]
     fn substring_lookup_returns_none_for_multiple_matches() {
         let file = cache_file(vec![
-            ("production-main [US]", "mysql", "s1", 1),
-            ("production-replica [US]", "mysql", "s2", 1),
+            ("production-main", "mysql", "s1", 1),
+            ("production-replica", "mysql", "s2", 1),
         ]);
 
         let entry = find_matching(&file, "example.querypie", "prod", "");
@@ -308,14 +308,14 @@ mod tests {
     #[test]
     fn engine_filter_narrows_substring_match() {
         let file = cache_file(vec![
-            ("production-main [US]", "mysql", "s1", 1),
-            ("production-warehouse [US]", "postgresql", "s2", 3),
+            ("production-main", "mysql", "s1", 1),
+            ("production-warehouse", "postgresql", "s2", 3),
         ]);
 
         let entry = find_matching(&file, "example.querypie", "prod", "postgresql")
             .expect("expected engine-filtered cache match");
 
-        assert_eq!(entry.connection, "production-warehouse [US]");
+        assert_eq!(entry.connection, "production-warehouse");
         assert_eq!(entry.engine, "postgresql");
         assert_eq!(entry.db_type, 3);
     }
@@ -325,7 +325,7 @@ mod tests {
         let file: HostCacheFile = serde_json::from_str(
             r#"{
                 "sessions": {
-                    "production-main [US]": {
+                    "production-main": {
                         "mysql": {
                             "window_id": "w1",
                             "session": "s1",
@@ -347,14 +347,14 @@ mod tests {
     #[test]
     fn clear_removes_single_substring_match() -> Result<()> {
         let mut file = cache_file(vec![
-            ("production-main [US]", "mysql", "s1", 1),
-            ("staging-main [US]", "mysql", "s2", 1),
+            ("production-main", "mysql", "s1", 1),
+            ("staging-main", "mysql", "s2", 1),
         ]);
 
         remove_matching(&mut file, "prod")?;
 
-        assert!(!file.sessions.contains_key("production-main [US]"));
-        assert!(file.sessions.contains_key("staging-main [US]"));
+        assert!(!file.sessions.contains_key("production-main"));
+        assert!(file.sessions.contains_key("staging-main"));
         Ok(())
     }
 
@@ -362,21 +362,21 @@ mod tests {
     fn clear_removes_exact_match_before_substring_matches() -> Result<()> {
         let mut file = cache_file(vec![
             ("prod", "mysql", "s1", 1),
-            ("production-main [US]", "mysql", "s2", 1),
+            ("production-main", "mysql", "s2", 1),
         ]);
 
         remove_matching(&mut file, "prod")?;
 
         assert!(!file.sessions.contains_key("prod"));
-        assert!(file.sessions.contains_key("production-main [US]"));
+        assert!(file.sessions.contains_key("production-main"));
         Ok(())
     }
 
     #[test]
     fn clear_rejects_ambiguous_substring_match() {
         let mut file = cache_file(vec![
-            ("production-main [US]", "mysql", "s1", 1),
-            ("production-replica [US]", "mysql", "s2", 1),
+            ("production-main", "mysql", "s1", 1),
+            ("production-replica", "mysql", "s2", 1),
         ]);
 
         let err = remove_matching(&mut file, "prod").expect_err("expected ambiguity error");

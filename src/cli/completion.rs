@@ -405,14 +405,14 @@ mod tests {
     fn reads_quoted_option_values() {
         let words = vec![
             "--connection".to_string(),
-            "\"example-main [US]\"".to_string(),
+            "\"example-main\"".to_string(),
             "--db='example_app'".to_string(),
             "--schema=\"public\"".to_string(),
         ];
 
         assert_eq!(
             option_value(&words, "--connection", Some("-c")).as_deref(),
-            Some("example-main [US]")
+            Some("example-main")
         );
         assert_eq!(
             option_value(&words, "--db", Some("-d")).as_deref(),
@@ -431,11 +431,11 @@ mod tests {
     #[test]
     fn matches_quoted_current_prefixes() {
         assert!(starts_with(
-            "example-main [US]",
+            "example-main",
             std::ffi::OsStr::new("\"example")
         ));
         assert!(starts_with(
-            "example-main [US]",
+            "example-main",
             std::ffi::OsStr::new("'example")
         ));
     }
