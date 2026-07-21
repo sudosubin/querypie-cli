@@ -46,7 +46,7 @@ impl CompletionSession {
         Ok(Self {
             client: client_with_window(ctx, cookie, entry.window_id)?,
             session: entry.session,
-            db: selected_database(ctx, entry.db),
+            db: entry.resolved_db,
         })
     }
 
@@ -54,20 +54,32 @@ impl CompletionSession {
         let window_id = new_window_id();
         let client = client_with_window(ctx, cookie, window_id.clone())?;
         let opened = client.open_session(&ctx.connection, &ctx.engine)?;
+
+        let input_db = ctx.database.trim();
+        let resolved_db = if input_db.is_empty() {
+            opened.db.clone()
+        } else {
+            input_db.to_string()
+        };
+        if !input_db.is_empty() && input_db != opened.db {
+            client.change_database(&opened.instance_uuid, input_db)?;
+        }
+
         sessioncache::put(sessioncache::Entry {
             host: ctx.host.clone(),
             connection: opened.connection.clone(),
             engine: opened.engine_name.clone(),
+            input_db: ctx.database.clone(),
             window_id,
             session: opened.session.clone(),
-            db: opened.db.clone(),
+            resolved_db: resolved_db.clone(),
             db_type: opened.db_type,
             opened_at: now_unix(),
         })?;
         Ok(Self {
             client,
             session: opened.session,
-            db: selected_database(ctx, opened.db),
+            db: resolved_db,
         })
     }
 }
@@ -219,19 +231,11 @@ fn resolve_session(ctx: &CompletionContext, cookie: &str) -> Result<CompletionSe
 }
 
 fn cached_session(ctx: &CompletionContext) -> Option<sessioncache::Entry> {
-    sessioncache::get_matching(&ctx.host, &ctx.connection, &ctx.engine)
+    sessioncache::get_matching(&ctx.host, &ctx.connection, &ctx.engine, &ctx.database)
 }
 
 fn client_with_window(ctx: &CompletionContext, cookie: &str, window_id: String) -> Result<Client> {
     Client::new_with_timeout(&ctx.host, cookie, window_id, COMPLETE_TIMEOUT)
-}
-
-fn selected_database(ctx: &CompletionContext, fallback: String) -> String {
-    if ctx.database.is_empty() {
-        fallback
-    } else {
-        ctx.database.clone()
-    }
 }
 
 fn is_auth_expired(err: &anyhow::Error) -> bool {

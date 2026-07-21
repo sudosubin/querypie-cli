@@ -11,24 +11,28 @@ pub struct Entry {
     pub host: String,
     pub connection: String,
     pub engine: String,
+    /// Cache key: the database as given on the command line (empty for the connection default).
+    pub input_db: String,
     pub window_id: String,
     pub session: String,
-    pub db: String,
+    pub resolved_db: String,
     pub db_type: i32,
     pub opened_at: i64,
 }
 
+type EngineSessions = BTreeMap<String, BTreeMap<String, SessionEntry>>;
+
 #[derive(Default, Serialize, Deserialize)]
 struct HostCacheFile {
     #[serde(default)]
-    sessions: BTreeMap<String, BTreeMap<String, SessionEntry>>,
+    sessions: BTreeMap<String, EngineSessions>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct SessionEntry {
     window_id: String,
     session: String,
-    db: String,
+    resolved_db: String,
     #[serde(default)]
     db_type: i32,
     opened_at: i64,
@@ -38,10 +42,10 @@ fn path_for_host(host: &str) -> PathBuf {
     paths::host_cache_file(&paths::normalize_host(host))
 }
 
-pub fn get_matching(host: &str, conn_query: &str, engine: &str) -> Option<Entry> {
+pub fn get_matching(host: &str, conn_query: &str, engine: &str, db: &str) -> Option<Entry> {
     let host = paths::normalize_host(host);
     let file = load_host(&host);
-    find_matching(&file, &host, conn_query, engine)
+    find_matching(&file, &host, conn_query, engine, db)
 }
 
 pub fn put(entry: Entry) -> Result<()> {
@@ -49,11 +53,14 @@ pub fn put(entry: Entry) -> Result<()> {
     let _lock = HostLock::acquire(&host)?;
     let connection = entry.connection.clone();
     let engine = entry.engine.clone();
+    let input_db = entry.input_db.clone();
     let mut file = load_host(&host);
     file.sessions
         .entry(connection)
         .or_default()
-        .insert(engine, entry.into());
+        .entry(engine)
+        .or_default()
+        .insert(input_db, entry.into());
     save_host(&host, &file)
 }
 
@@ -95,9 +102,11 @@ fn list_host(host: &str) -> Vec<Entry> {
     file.sessions
         .iter()
         .flat_map(|(connection, engines)| {
-            engines
-                .iter()
-                .map(move |(engine, entry)| entry.to_public(host, connection, engine))
+            engines.iter().flat_map(move |(engine, dbs)| {
+                dbs.iter().map(move |(input_db, entry)| {
+                    entry.to_public(host, connection, engine, input_db)
+                })
+            })
         })
         .collect()
 }
@@ -143,6 +152,7 @@ fn find_matching(
     host: &str,
     conn_query: &str,
     engine_query: &str,
+    db_query: &str,
 ) -> Option<Entry> {
     let engine_query = engine_query.trim().to_ascii_lowercase();
     let needle = conn_query.to_ascii_lowercase();
@@ -151,15 +161,18 @@ fn find_matching(
 
     for (connection, engines) in &file.sessions {
         let partial_match = connection.to_ascii_lowercase().contains(&needle);
-        for (engine, entry) in engines {
+        for (engine, dbs) in engines {
             if !matches_engine(engine, &engine_query) {
                 continue;
             }
+            let Some(entry) = dbs.get(db_query) else {
+                continue;
+            };
 
             if connection == conn_query {
-                exact.push(entry.to_public(host, connection, engine));
+                exact.push(entry.to_public(host, connection, engine, db_query));
             } else if partial_match {
-                partial.push(entry.to_public(host, connection, engine));
+                partial.push(entry.to_public(host, connection, engine, db_query));
             }
         }
     }
@@ -237,14 +250,15 @@ fn host_from_cache_path(path: &Path) -> Option<String> {
 }
 
 impl SessionEntry {
-    fn to_public(&self, host: &str, connection: &str, engine: &str) -> Entry {
+    fn to_public(&self, host: &str, connection: &str, engine: &str, input_db: &str) -> Entry {
         Entry {
             host: host.to_string(),
             connection: connection.to_string(),
             engine: engine.to_string(),
+            input_db: input_db.to_string(),
             window_id: self.window_id.clone(),
             session: self.session.clone(),
-            db: self.db.clone(),
+            resolved_db: self.resolved_db.clone(),
             db_type: self.db_type,
             opened_at: self.opened_at,
         }
@@ -256,7 +270,7 @@ impl From<Entry> for SessionEntry {
         Self {
             window_id: entry.window_id,
             session: entry.session,
-            db: entry.db,
+            resolved_db: entry.resolved_db,
             db_type: entry.db_type,
             opened_at: entry.opened_at,
         }
@@ -274,7 +288,7 @@ mod tests {
             ("production-main readonly", "mysql", "s2", 1),
         ]);
 
-        let entry = find_matching(&file, "example.querypie", "production-main", "")
+        let entry = find_matching(&file, "example.querypie", "production-main", "", "")
             .expect("expected exact cache match");
 
         assert_eq!(entry.connection, "production-main");
@@ -288,7 +302,7 @@ mod tests {
         let file = cache_file(vec![("production-main", "mysql", "s1", 1)]);
 
         let entry =
-            find_matching(&file, "example.querypie", "prod", "").expect("expected cache match");
+            find_matching(&file, "example.querypie", "prod", "", "").expect("expected cache match");
 
         assert_eq!(entry.connection, "production-main");
     }
@@ -300,7 +314,7 @@ mod tests {
             ("production-replica", "mysql", "s2", 1),
         ]);
 
-        let entry = find_matching(&file, "example.querypie", "prod", "");
+        let entry = find_matching(&file, "example.querypie", "prod", "", "");
 
         assert!(entry.is_none());
     }
@@ -312,12 +326,58 @@ mod tests {
             ("production-warehouse", "postgresql", "s2", 3),
         ]);
 
-        let entry = find_matching(&file, "example.querypie", "prod", "postgresql")
+        let entry = find_matching(&file, "example.querypie", "prod", "postgresql", "")
             .expect("expected engine-filtered cache match");
 
         assert_eq!(entry.connection, "production-warehouse");
         assert_eq!(entry.engine, "postgresql");
         assert_eq!(entry.db_type, 3);
+    }
+
+    #[test]
+    fn db_selector_isolates_entries_on_same_connection() {
+        let mut file = HostCacheFile::default();
+        insert_entry(
+            &mut file,
+            "production-main",
+            "mysql",
+            "",
+            "s-default",
+            "app",
+        );
+        insert_entry(
+            &mut file,
+            "production-main",
+            "mysql",
+            "reporting",
+            "s-report",
+            "reporting",
+        );
+
+        let default = find_matching(&file, "example.querypie", "production-main", "mysql", "")
+            .expect("expected default db match");
+        assert_eq!(default.session, "s-default");
+        assert_eq!(default.resolved_db, "app");
+
+        let reporting = find_matching(
+            &file,
+            "example.querypie",
+            "production-main",
+            "mysql",
+            "reporting",
+        )
+        .expect("expected reporting db match");
+        assert_eq!(reporting.session, "s-report");
+        assert_eq!(reporting.resolved_db, "reporting");
+
+        assert!(find_matching(
+            &file,
+            "example.querypie",
+            "production-main",
+            "mysql",
+            "missing"
+        )
+        .is_none());
     }
 
     #[test]
@@ -327,17 +387,19 @@ mod tests {
                 "sessions": {
                     "production-main": {
                         "mysql": {
-                            "window_id": "w1",
-                            "session": "s1",
-                            "db": "app",
-                            "opened_at": 123
+                            "": {
+                                "window_id": "w1",
+                                "session": "s1",
+                                "resolved_db": "app",
+                                "opened_at": 123
+                            }
                         }
                     }
                 }
             }"#,
         )?;
 
-        let entry = find_matching(&file, "example.querypie", "prod", "mysql")
+        let entry = find_matching(&file, "example.querypie", "prod", "mysql", "")
             .expect("expected old cache match");
 
         assert_eq!(entry.db_type, 0);
@@ -391,17 +453,44 @@ mod tests {
             file.sessions
                 .entry(connection.to_string())
                 .or_default()
+                .entry(engine.to_string())
+                .or_default()
                 .insert(
-                    engine.to_string(),
+                    String::new(),
                     SessionEntry {
                         window_id: format!("{session}-window"),
                         session: session.to_string(),
-                        db: "app".to_string(),
+                        resolved_db: "app".to_string(),
                         db_type,
                         opened_at: 123,
                     },
                 );
         }
         file
+    }
+
+    fn insert_entry(
+        file: &mut HostCacheFile,
+        connection: &str,
+        engine: &str,
+        input_db: &str,
+        session: &str,
+        resolved_db: &str,
+    ) {
+        file.sessions
+            .entry(connection.to_string())
+            .or_default()
+            .entry(engine.to_string())
+            .or_default()
+            .insert(
+                input_db.to_string(),
+                SessionEntry {
+                    window_id: format!("{session}-window"),
+                    session: session.to_string(),
+                    resolved_db: resolved_db.to_string(),
+                    db_type: 1,
+                    opened_at: 123,
+                },
+            );
     }
 }

@@ -114,20 +114,22 @@ impl Global {
     }
 
     fn cached_session(&self, host: &str, cookie: &str) -> Result<Option<Resolved>> {
-        let Some(entry) = sessioncache::get_matching(host, &self.connection, &self.engine) else {
+        let Some(entry) =
+            sessioncache::get_matching(host, &self.connection, &self.engine, &self.database)
+        else {
             return Ok(None);
         };
         if self.verbose {
             eprintln!(
-                "reusing cached session {} (window {})",
-                entry.session, entry.window_id
+                "reusing cached session {} (window {}, db={})",
+                entry.session, entry.window_id, entry.resolved_db
             );
         }
         let db_type = cached_db_type(&entry);
         Ok(Some(Resolved {
             client: Client::new(host, cookie.to_string(), entry.window_id)?,
             session: entry.session,
-            db: self.selected_db(entry.db),
+            db: entry.resolved_db,
             db_type,
         }))
     }
@@ -135,28 +137,40 @@ impl Global {
     fn open_session(&self, host: String, cookie: String) -> Result<Resolved> {
         let window_id = new_window_id();
         let client = Client::new(host.clone(), cookie, window_id.clone())?;
-        let session = client.open_session(&self.connection, &self.engine)?;
+        let opened = client.open_session(&self.connection, &self.engine)?;
+
+        let input_db = self.database.trim();
+        let resolved_db = if input_db.is_empty() {
+            opened.db.clone()
+        } else {
+            input_db.to_string()
+        };
+        if !input_db.is_empty() && input_db != opened.db {
+            client.change_database(&opened.instance_uuid, input_db)?;
+        }
+
         if self.verbose {
             eprintln!(
                 "opened session {} ({}/{}, db={}) window {}",
-                session.session, session.engine, session.version, session.db, window_id
+                opened.session, opened.engine, opened.version, resolved_db, window_id
             );
         }
         sessioncache::put(sessioncache::Entry {
             host,
-            connection: session.connection.clone(),
-            engine: session.engine_name.clone(),
+            connection: opened.connection.clone(),
+            engine: opened.engine_name.clone(),
+            input_db: self.database.clone(),
             window_id,
-            session: session.session.clone(),
-            db: session.db.clone(),
-            db_type: session.db_type,
+            session: opened.session.clone(),
+            resolved_db: resolved_db.clone(),
+            db_type: opened.db_type,
             opened_at: now_unix(),
         })?;
         Ok(Resolved {
             client,
-            session: session.session,
-            db: self.selected_db(session.db),
-            db_type: session.db_type,
+            session: opened.session,
+            db: resolved_db,
+            db_type: opened.db_type,
         })
     }
 
@@ -175,14 +189,6 @@ impl Global {
             resolved.db,
             self.connection
         );
-    }
-
-    fn selected_db(&self, fallback: String) -> String {
-        if self.database.is_empty() {
-            fallback
-        } else {
-            self.database.clone()
-        }
     }
 }
 
