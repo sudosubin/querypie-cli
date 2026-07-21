@@ -2545,7 +2545,7 @@ checksum = "95067976aca6421a523e491fce939a3e65249bac4b977adee0ee9771568e8aa3"
 
 [[package]]
 name = "querypie-cli"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anstream",
  "anstyle",
