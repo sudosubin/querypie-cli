@@ -121,6 +121,14 @@ message OpenResponse {
   string db = 5;
 }
 
+message DatabaseChangeRequest {
+  string session = 1;
+  string connection_uuid = 2;
+  string database_name = 3;
+}
+
+message DatabaseChangeResponse {}
+
 message GetDatabasesRequest {
   string session = 2;
   string db = 3;

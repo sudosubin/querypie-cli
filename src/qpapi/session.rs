@@ -29,6 +29,7 @@ impl Connection {
 #[derive(Debug, Clone)]
 pub struct OpenedSession {
     pub connection: String,
+    pub instance_uuid: String,
     pub session: String,
     pub engine_name: String,
     pub engine: String,
@@ -160,7 +161,7 @@ impl Client {
                 empty58: String::new(),
             }),
             client_uuid: Uuid::new_v4().to_string(),
-            instance_uuid2: inst.uuid,
+            instance_uuid2: inst.uuid.clone(),
             flag23: 3,
         };
 
@@ -171,6 +172,7 @@ impl Client {
         let engine_name = conn.engine().to_string();
         Ok(OpenedSession {
             connection: conn.name,
+            instance_uuid: inst.uuid,
             session: resp.session,
             engine_name,
             engine: resp.engine,
@@ -178,5 +180,18 @@ impl Client {
             db: resp.db,
             db_type: conn.db_type,
         })
+    }
+
+    /// Pins the current database for this client's window (`connection_uuid` is the instance uuid).
+    pub fn change_database(&self, connection_uuid: &str, database: &str) -> Result<()> {
+        let _: pb::DatabaseChangeResponse = self.unary(
+            "engine.transaction.TransactionService/changeDatabase",
+            &pb::DatabaseChangeRequest {
+                session: String::new(),
+                connection_uuid: connection_uuid.to_string(),
+                database_name: database.to_string(),
+            },
+        )?;
+        Ok(())
     }
 }

@@ -92,7 +92,7 @@ pub fn sessions(entries: &[sessioncache::Entry], opts: Options) -> Result<()> {
                 host: &entry.host,
                 connection: &entry.connection,
                 engine: &entry.engine,
-                db: &entry.db,
+                db: &entry.resolved_db,
                 session: &entry.session,
                 opened_at: entry.opened_at,
             })
@@ -106,7 +106,7 @@ pub fn sessions(entries: &[sessioncache::Entry], opts: Options) -> Result<()> {
                     entry.host.clone(),
                     entry.connection.clone(),
                     entry.engine.clone(),
-                    entry.db.clone(),
+                    entry.resolved_db.clone(),
                     entry.session.clone(),
                 ]
             }),
