@@ -6,7 +6,7 @@ use reqwest::header::{ACCEPT, CONTENT_TYPE, SET_COOKIE};
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use super::pb;
+use super::{http, pb};
 
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -71,7 +71,7 @@ impl Client {
             host: host.into(),
             cookie: cookie.into(),
             window_id: window_id.into(),
-            http: HttpClient::builder().timeout(timeout).build()?,
+            http: http::client(timeout)?,
         })
     }
 
@@ -126,9 +126,7 @@ pub fn refresh_access_token(host: &str, cookies: &str) -> Result<Option<Vec<Stri
     let url = engine_grpc_url(host, "api.user.AccountService/RefreshToken");
     let mut body = Vec::new();
     pb::RefreshTokenRequest::default().encode(&mut body)?;
-    let http = HttpClient::builder()
-        .timeout(Duration::from_secs(30))
-        .build()?;
+    let http = http::client(Duration::from_secs(30))?;
     let resp = grpc_web_post(&http, url, cookies, None, &body)
         .send()
         .context("send refresh token request")?;

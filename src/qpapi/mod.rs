@@ -1,5 +1,6 @@
 pub mod catalog;
 pub mod grpcweb;
+mod http;
 pub mod session;
 pub mod sql;
 
